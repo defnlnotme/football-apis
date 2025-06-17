@@ -168,38 +168,19 @@ async def fetch_clubelo(output_dir: Path, args: argparse.Namespace) -> None:
                 if method_name == 'get_team_elo':
                     data = method(
                         team_name=args.team,
-                        team_id=args.team_id,
                         date=args.date
                     )
-                elif method_name == 'search_teams':
-                    if not args.team:
-                        logger.error("❌ team name is required for search_teams")
-                        continue
-                    data = method(query=args.team)
                 elif method_name == 'get_top_teams':
                     data = method(
+                        date=args.date,
                         limit=args.limit if hasattr(args, 'limit') else 20,
                         country=args.country,
                         min_elo=args.min_elo
                     )
-                elif method_name == 'get_historical_elos':
-                    if not args.team_id:
-                        logger.error("❌ team_id is required for get_historical_elos")
-                        continue
-                    data = method(
-                        team_id=args.team_id,
-                        start_date=args.date_from,
-                        end_date=args.date_to
-                    )
-                elif method_name == 'get_team_form':
-                    if not args.team_id:
-                        logger.error("❌ team_id is required for get_team_form")
-                        continue
-                    data = method(
-                        team_id=args.team_id,
-                        matches=args.matches or 5,
-                        competition=args.competition
-                    )
+                elif method_name == 'get_fixtures':
+                    data = method()
+                else:
+                    data = method()
                 
                 output_data["results"][method_name] = data
                 logger.info(f"✅ Successfully fetched data from {method_name}")
@@ -252,7 +233,9 @@ async def fetch_football_data(output_dir: Path, args: argparse.Namespace) -> Non
                         team_id=args.team_id,
                         season=args.season,
                         competition_id=args.competition_id,
-                        status=args.status or "FINISHED"
+                        status=args.status or "FINISHED",
+                        limit=args.fd_limit,
+                        competitions=args.competitions
                     )
                 elif method_name == 'get_team_standings':
                     if not args.team_id or not args.competition_id:
@@ -369,10 +352,10 @@ def list_available_parameters(endpoint: str) -> None:
             output.append("- unix (Unix timestamp)")
             
         elif endpoint == 'clubelo':
-            client = ClubEloClient(api_key=get_api_key('clubelo'))
+            client = ClubEloClient()
             
             output.append("\nTeam Ratings Client Methods:")
-            output.append("\n1. get_team_elo(team_name=None, team_id=None, date=None):")
+            output.append("\n1. get_team_elo [--team TEAM] [--team-id TEAM_ID] [--date DATE]: Get Elo rating for a specific team.")
             
             # Get top teams to show available team names and IDs
             output.append("\n   Available teams (top 20):")
@@ -385,29 +368,18 @@ def list_available_parameters(endpoint: str) -> None:
             output.append("   - team_id: ClubElo team ID")
             output.append("   - date: Date in YYYY-MM-DD format (default: latest available)")
             
-            output.append("\n2. search_teams(query):")
-            output.append("   - query: Search query (team name or part of it)")
-            
-            output.append("\n3. get_top_teams(limit=20, country=None, min_elo=None):")
+            output.append("\n2. get_top_teams [--limit LIMIT] [--country COUNTRY] [--min-elo MIN_ELO]: Get top teams by Elo rating.")
             output.append("   - limit: Maximum number of teams to return")
             output.append("   - country: Filter by country code (e.g., 'ENG', 'ESP')")
             output.append("   - min_elo: Minimum Elo rating")
             
-            output.append("\n4. get_historical_elos(team_id, start_date=None, end_date=None):")
-            output.append("   - team_id: ClubElo team ID")
-            output.append("   - start_date: Start date in YYYY-MM-DD format")
-            output.append("   - end_date: End date in YYYY-MM-DD format")
-            
-            output.append("\n5. get_team_form(team_id, matches=5, competition=None):")
-            output.append("   - team_id: ClubElo team ID")
-            output.append("   - matches: Number of recent matches to include")
-            output.append("   - competition: Filter by competition")
+            output.append("\n3. get_fixtures: Get fixtures for a team.")
             
         elif endpoint == 'football-data':
             client = FootballDataClient(api_key=get_api_key('football-data'))
             
             output.append("\nPerformance Stats Client Methods:")
-            output.append("\n1. get_team_statistics(team_id, season=None, competition_id=None):")
+            output.append("\n1. get_team_statistics --team-id TEAM_ID [--season SEASON] [--competition-id COMPETITION_ID]: Get team statistics for a specific season and competition.")
             
             # Get available competitions
             output.append("\n   Available competitions:")
@@ -422,19 +394,36 @@ def list_available_parameters(endpoint: str) -> None:
             output.append("   - season: Season year (e.g., 2023 for 2023/2024 season)")
             output.append("   - competition_id: ID of the competition")
             
-            output.append("\n2. get_team_matches(team_id, season=None, competition_id=None, status='FINISHED'):")
+            output.append("\n2. get_team_matches --team-id TEAM_ID [--season SEASON] [--competition-id COMPETITION_ID] [--status STATUS] [--fd-limit FD_LIMIT] [--competitions COMPETITIONS]: Get team matches for a specific season and competition, or recent matches for a team.")
             output.append("   - team_id: ID of the team")
             output.append("   - season: Season year")
             output.append("   - competition_id: ID of the competition")
             output.append("   - status: Match status (e.g., 'FINISHED', 'SCHEDULED')")
+            output.append("   - fd-limit: Maximum number of matches to return")
+            output.append("   - competitions: Filter by competition")
             
-            output.append("\n3. get_team_standings(team_id, competition_id, season=None):")
+            output.append("\n3. get_team_standings --team-id TEAM_ID --competition-id COMPETITION_ID [--season SEASON]: Get team standings in a competition.")
             output.append("   - team_id: ID of the team")
             output.append("   - competition_id: ID of the competition")
             output.append("   - season: Season year")
             
+            output.append("\n4. get_player_statistics --player-id PLAYER_ID [--season SEASON] [--competition-id COMPETITION_ID]: Get player statistics for a specific season and competition.")
+            output.append("   - player_id: ID of the player")
+            output.append("   - season: Season year")
+            output.append("   - competition_id: ID of the competition")
+            
+            output.append("\n5. get_head_to_head --team1 TEAM1_ID --team2 TEAM2_ID [--limit LIMIT] [--date-from DATE_FROM] [--date-to DATE_TO]: Get head-to-head matches between two teams.")
+            output.append("   - team1: ID of the first team")
+            output.append("   - team2: ID of the second team")
+            output.append("   - limit: Maximum number of matches to return")
+            output.append("   - date_from: Start date of the match range")
+            output.append("   - date_to: End date of the match range")
+            
+            output.append("\n6. get_team_info --team-id TEAM_ID: Get detailed information about a team.")
+            output.append("   - team_id: ID of the team")
+            
         else:
-            output.append(f"❌ Unknown endpoint: {endpoint}")
+            logger.error(f"❌ Error listing parameters: '{endpoint}'")
             return
             
         # Join the output and print it
@@ -479,19 +468,19 @@ Examples:
   python client.py football-data --team-id 81 --season 2023 --competition-id 2021
 
   # Get match history between two teams
-  python client.py football-data --team1 81 --team2 65 --limit 10
+  python client.py football-data --team1 81 --team2 65 --fd-limit 10
 
   # Call multiple methods for betting odds
   python client.py the-odds-api --the-odds-api-method get_sports get_odds get_scores --sport soccer_epl
 
   # Get team ratings with multiple methods
-  python client.py clubelo --clubelo-method get_team_elo search_teams --team Barcelona
+  python client.py clubelo --clubelo-method get_team_elo --team Barcelona
 
   # Get performance stats with multiple methods
   python client.py football-data --football-data-method get_team_statistics get_team_matches --team-id 81
 
   # Get match history with multiple methods
-  python client.py football-data --football-data-method get_team_matches get_head_to_head --team1 81 --team2 65
+  python client.py football-data --football-data-method get_team_matches get_head_to_head --team1 81 --team2 65 --fd-limit 10
 """
     )
     
@@ -539,12 +528,10 @@ Examples:
     # Team ratings specific arguments
     ClubEloClient_group = parser.add_argument_group('ClubEloClient')
     ClubEloClient_group.add_argument('--clubelo-method', type=str, nargs='+',
-                             choices=['get_team_elo', 'search_teams', 'get_top_teams', 'get_historical_elos', 'get_team_form'],
+                             choices=['get_team_elo', 'get_top_teams', 'get_fixtures'],
                              default=['get_team_elo'],
                              help=argparse.SUPPRESS)
     ClubEloClient_group.add_argument('--team', type=str,
-                             help=argparse.SUPPRESS)
-    ClubEloClient_group.add_argument('--team-id', type=int,
                              help=argparse.SUPPRESS)
     ClubEloClient_group.add_argument('--date', type=str,
                              help=argparse.SUPPRESS)
@@ -552,15 +539,13 @@ Examples:
                              help=argparse.SUPPRESS)
     ClubEloClient_group.add_argument('--min-elo', type=int,
                              help=argparse.SUPPRESS)
-    ClubEloClient_group.add_argument('--matches', type=int,
-                             help=argparse.SUPPRESS)
-    ClubEloClient_group.add_argument('--competition', type=str,
+    ClubEloClient_group.add_argument('--limit', type=int,
                              help=argparse.SUPPRESS)
     
     # Performance stats specific arguments
     FootballDataClient_group = parser.add_argument_group('FootballDataClient')
     FootballDataClient_group.add_argument('--football-data-method', type=str, nargs='+',
-                           choices=['get_team_statistics', 'get_team_matches', 'get_team_standings', 'get_player_statistics', 'get_head_to_head', 'get_team_info', 'search_teams', 'get_competition_matches', 'get_match_details'],
+                           choices=['get_team_statistics', 'get_team_matches', 'get_team_standings', 'get_player_statistics', 'get_head_to_head', 'get_team_info', 'get_competition_matches', 'get_match_details'],
                            default=['get_team_statistics'],
                            help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--season', type=int,
@@ -573,7 +558,7 @@ Examples:
                            help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--team2', type=int,
                            help=argparse.SUPPRESS)
-    FootballDataClient_group.add_argument('--limit', type=int,
+    FootballDataClient_group.add_argument('--fd-limit', type=int,
                            help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--competitions', type=str,
                            help=argparse.SUPPRESS)
@@ -607,28 +592,28 @@ Key Features:
 - Call multiple methods in a single run
 
 Available Methods:
-- get_odds: Get odds for upcoming events (default)
-- get_sports: Get list of available sports
-- get_scores: Get scores for recently completed events
-- get_events: Get list of upcoming events
-- get_historical_odds: Get historical odds for a specific event
-- get_historical_odds_archive: Get historical odds for events at a specific time
+- get_odds [--sport SPORT] [--region REGION] [--markets MARKETS] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS] [--date-from DATE_FROM] [--date-to DATE_TO]: Get odds for upcoming events (default).
+- get_sports [--all-available]: Get list of available sports.
+- get_scores [--sport SPORT] [--days-from DAYS_FROM] [--date-format DATE_FORMAT]: Get scores for recently completed events.
+- get_events [--sport SPORT] [--date-format DATE_FORMAT] [--bookmakers BOOKMAKERS]: Get list of upcoming events.
+- get_historical_odds --sport SPORT --event-id EVENT_ID [--region REGION] [--markets MARKETS] [--date-format DATE_FORMAT] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS]: Get historical odds for a specific event.
+- get_historical_odds_archive --sport SPORT --commence-time COMMENCE_TIME [--region REGION] [--markets MARKETS] [--date-format DATE_FORMAT] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS]: Get historical odds for events at a specific time.
 
 Example Usage:
 1. Get odds for Premier League matches:
    python client.py the-odds-api --sport soccer_epl
 
 2. List available sports:
-   python client.py the-odds-api --method get_sports
+   python client.py the-odds-api --the-odds-api-method get_sports
 
 3. Get scores for recent matches:
-   python client.py the-odds-api --method get_scores --sport soccer_epl --days-from 3
+   python client.py the-odds-api --the-odds-api-method get_scores --sport soccer_epl --days-from 3
 
 4. Get historical odds for an event:
-   python client.py the-odds-api --method get_historical_odds --sport soccer_epl --event-id 12345
+   python client.py the-odds-api --the-odds-api-method get_historical_odds --sport soccer_epl --event-id 12345
 
 5. Call multiple methods in one run:
-   python client.py the-odds-api --method get_sports get_odds get_scores --sport soccer_epl
+   python client.py the-odds-api --the-odds-api-method get_sports get_odds get_scores --sport soccer_epl
 
 6. List available parameters:
    python client.py the-odds-api --list-params
@@ -644,6 +629,11 @@ Key Features:
 - View historical Elo changes
 - Access team form and performance metrics
 - Search for teams by name
+
+Available Methods:
+- get_team_elo [--team TEAM] [--team-id TEAM_ID] [--date DATE]: Get Elo rating for a specific team.
+- get_top_teams [--limit LIMIT] [--country COUNTRY] [--min-elo MIN_ELO]: Get top teams by Elo rating.
+- get_fixtures: Get fixtures for a team.
 
 Example Usage:
 1. Get top teams by Elo rating:
@@ -667,6 +657,16 @@ Key Features:
 - Access league standings
 - Track historical performance
 
+Available Methods:
+- get_team_statistics --team-id TEAM_ID [--season SEASON] [--competition-id COMPETITION_ID]: Get team statistics for a specific season and competition.
+- get_team_matches --team-id TEAM_ID [--season SEASON] [--competition-id COMPETITION_ID] [--status STATUS] [--fd-limit FD_LIMIT] [--competitions COMPETITIONS]: Get team matches for a specific season and competition, or recent matches for a team.
+- get_team_standings --team-id TEAM_ID --competition-id COMPETITION_ID [--season SEASON]: Get team standings in a competition.
+- get_player_statistics --player-id PLAYER_ID [--season SEASON] [--competition-id COMPETITION_ID]: Get player statistics for a specific season and competition.
+- get_head_to_head --team1 TEAM1_ID --team2 TEAM2_ID [--limit LIMIT] [--date-from DATE_FROM] [--date-to DATE_TO]: Get head-to-head matches between two teams.
+- get_team_info --team-id TEAM_ID: Get detailed information about a team.
+- get_competition_matches --competition-id COMPETITION_ID [--season SEASON] [--matchday MATCHDAY]: Get matches for a specific competition.
+- get_match_details --match-id MATCH_ID: Get detailed information about a specific match.
+
 Example Usage:
 1. Get team statistics:
    python client.py football-data --team-id 81
@@ -676,6 +676,9 @@ Example Usage:
 
 3. Get stats for a specific team and season:
    python client.py football-data --team-id 81 --season 2023 --competition-id 2021
+
+4. Get match history between two teams:
+   python client.py football-data --football-data-method get_head_to_head --team1 81 --team2 65 --fd-limit 10
 """)
         return
     

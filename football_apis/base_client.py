@@ -27,8 +27,15 @@ class BaseAPIClient(ABC):
         """
         load_dotenv()  # Load environment variables from .env file
         
-        self.api_key = api_key or os.getenv(f"{self.__class__.__name__.upper()}_API_KEY")
         self.base_url = base_url.rstrip('/') if base_url else ""
+        self.api_key = api_key # Assign api_key directly
+
+        # If api_key is still None after direct assignment, try loading from environment
+        if self.api_key is None:
+            env_api_key = os.getenv(f"{self.__class__.__name__.upper()}_API_KEY")
+            if env_api_key:
+                self.api_key = env_api_key
+
         logger.info(f"[DEBUG] BaseAPIClient initialized with base_url: {self.base_url}")
         self.session = requests.Session()
         self.session.headers.update({
