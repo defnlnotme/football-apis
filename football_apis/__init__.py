@@ -13,13 +13,12 @@ Available clients:
 
 from .clients.the_odds_api import TheOddsApiClient
 from .clients.clubelo_api import ClubEloClient
-from .clients.football_data_api import FootballDataPerformanceStatsClient, FootballDataMatchHistoryClient
+from .clients.football_data_api import FootballDataClient
 
 __version__ = "0.1.0"
 
 __all__ = [
     "TheOddsApiClient",
     "ClubEloClient",
-    "FootballDataPerformanceStatsClient",
-    "FootballDataMatchHistoryClient",
+    "FootballDataClient",
 ]

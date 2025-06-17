@@ -47,6 +47,19 @@ class BaseAPIClient(ABC):
                 'Authorization': f'Bearer {self.api_key}'
             })
     
+    def parse_response(self, response: requests.Response) -> Union[Dict[str, Any], List[Dict[str, Any]], str]:
+        """
+        Parses the response from the API.
+        By default, tries to parse as JSON. Subclasses can override for different formats.
+        """
+        if not response.text.strip():
+            return {}
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            logger.warning(f"Could not decode JSON response for {response.url}. Returning raw text.")
+            return response.text
+    
     def _make_request(
         self, 
         method: str, 
@@ -54,7 +67,7 @@ class BaseAPIClient(ABC):
         params: Optional[Dict[str, Any]] = None, 
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]], str]:
         """
         Make an HTTP request to the API.
         
@@ -66,7 +79,7 @@ class BaseAPIClient(ABC):
             headers: Additional headers
             
         Returns:
-            Parsed JSON response
+            Parsed JSON response or raw text if JSON decoding fails
             
         Raises:
             HTTPError: If the request fails
@@ -90,11 +103,7 @@ class BaseAPIClient(ABC):
             self._handle_response(response)
             response.raise_for_status()
             
-            # Handle empty responses
-            if not response.text.strip():
-                return {}
-                
-            return response.json()
+            return self.parse_response(response)
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {str(e)}")

@@ -79,28 +79,22 @@ def mock_response_500():
 
 # Client fixtures
 @pytest.fixture
-def match_history_client():
-    """Fixture for MatchHistoryClient with test API key"""
-    from football_apis.clients.match_history import MatchHistoryClient
-    return MatchHistoryClient(api_key="test_api_key")
+def the_odds_api_client():
+    """Fixture for TheOddsApiClient with test API key"""
+    from football_apis.clients.the_odds_api import TheOddsApiClient
+    return TheOddsApiClient(api_key="test_api_key")
 
 @pytest.fixture
-def performance_stats_client():
-    """Fixture for PerformanceStatsClient with test API key"""
-    from football_apis.clients.performance_stats import PerformanceStatsClient
-    return PerformanceStatsClient(api_key="test_api_key")
+def clubelo_client():
+    """Fixture for ClubEloClient with test API key"""
+    from football_apis.clients.clubelo_api import ClubEloClient
+    return ClubEloClient(api_key="test_api_key")
 
 @pytest.fixture
-def betting_odds_client():
-    """Fixture for BettingOddsClient with test API key"""
-    from football_apis.clients.betting_odds import BettingOddsClient
-    return BettingOddsClient(api_key="test_api_key")
-
-@pytest.fixture
-def team_ratings_client():
-    """Fixture for TeamRatingsClient with test API key"""
-    from football_apis.clients.team_ratings import TeamRatingsClient
-    return TeamRatingsClient(api_key="test_api_key")
+def football_data_client():
+    """Fixture for FootballDataClient with test API key"""
+    from football_apis.clients.football_data_api import FootballDataClient
+    return FootballDataClient(api_key="test_api_key")
 
 # Test data fixtures
 @pytest.fixture

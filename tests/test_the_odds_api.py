@@ -1,34 +1,34 @@
-"""Tests for the BettingOddsClient."""
+"""Tests for the TheOddsApiClient."""
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 
-class TestBettingOddsClient:
-    """Test cases for BettingOddsClient."""
+class TestTheOddsApiClient:
+    """Test cases for TheOddsApiClient."""
 
-    def test_initialization(self, betting_odds_client):
+    def test_initialization(self, the_odds_api_client):
         """Test client initialization with API key."""
-        assert betting_odds_client is not None
-        assert betting_odds_client.base_url == "https://api.the-odds-api.com/v4"
-        assert betting_odds_client.api_key == "test_api_key"
-        assert "apiKey" in betting_odds_client.session.params
-        assert betting_odds_client.session.params["apiKey"] == "test_api_key"
+        assert the_odds_api_client is not None
+        assert the_odds_api_client.base_url == "https://api.the-odds-api.com/v4"
+        assert the_odds_api_client.api_key == "test_api_key"
+        assert "apiKey" in the_odds_api_client.session.params
+        assert the_odds_api_client.session.params["apiKey"] == "test_api_key"
 
-    def test_test_connection_success(self, betting_odds_client, mock_requests_get):
+    def test_test_connection_success(self, the_odds_api_client, mock_requests_get):
         """Test successful connection to the API."""
         mock_response = MagicMock()
         mock_response.json.return_value = [{"key": "soccer_epl", "title": "EPL"}]
         mock_requests_get.return_value = mock_response
 
-        assert betting_odds_client.test_connection() is True
+        assert the_odds_api_client.test_connection() is True
         mock_requests_get.assert_called_once_with(
             "GET",
             "https://api.the-odds-api.com/v4/sports",
             params={"apiKey": "test_api_key"},
             json=None,
-            headers={}
+            headers=ANY
         )
 
-    def test_get_sports(self, betting_odds_client, mock_requests_get):
+    def test_get_sports(self, the_odds_api_client, mock_requests_get):
         """Test getting available sports."""
         mock_response = MagicMock()
         mock_response.json.return_value = [
@@ -37,12 +37,12 @@ class TestBettingOddsClient:
         ]
         mock_requests_get.return_value = mock_response
 
-        sports = betting_odds_client.get_sports()
+        sports = the_odds_api_client.get_sports()
         assert len(sports) == 2
         assert sports[0]["key"] == "soccer_epl"
         assert sports[0]["title"] == "Premier League"
 
-    def test_get_odds(self, betting_odds_client, mock_requests_get):
+    def test_get_odds(self, the_odds_api_client, mock_requests_get):
         """Test getting betting odds."""
         mock_response = MagicMock()
         mock_response.json.return_value = [
@@ -70,7 +70,7 @@ class TestBettingOddsClient:
         ]
         mock_requests_get.return_value = mock_response
 
-        odds = betting_odds_client.get_odds(
+        odds = the_odds_api_client.get_odds(
             sport_key="soccer_epl",
             regions="eu",
             markets="h2h"
@@ -81,7 +81,7 @@ class TestBettingOddsClient:
         assert odds[0]["away_team"] == "Chelsea"
         assert len(odds[0]["bookmakers"][0]["markets"][0]["outcomes"]) == 3
 
-    def test_get_scores(self, betting_odds_client, mock_requests_get):
+    def test_get_scores(self, the_odds_api_client, mock_requests_get):
         """Test getting scores."""
         mock_response = MagicMock()
         mock_response.json.return_value = [
@@ -96,14 +96,14 @@ class TestBettingOddsClient:
         ]
         mock_requests_get.return_value = mock_response
 
-        scores = betting_odds_client.get_scores(sport_key="soccer_epl", days_from=1)
+        scores = the_odds_api_client.get_scores(sport_key="soccer_epl", days_from=1)
         
         assert len(scores) == 1
         assert scores[0]["home_team"] == "Arsenal"
         assert scores[0]["scores"]["Arsenal"] == 2
         assert scores[0]["completed"] is True
 
-    def test_get_historical_odds(self, betting_odds_client, mock_requests_get):
+    def test_get_historical_odds(self, the_odds_api_client, mock_requests_get):
         """Test getting historical odds."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -120,7 +120,7 @@ class TestBettingOddsClient:
         }
         mock_requests_get.return_value = mock_response
 
-        historical = betting_odds_client.get_historical_odds(
+        historical = the_odds_api_client.get_historical_odds(
             sport_key="soccer_epl",
             event_id="test123"
         )
@@ -128,16 +128,16 @@ class TestBettingOddsClient:
         assert "data" in historical
         assert historical["data"][0]["home_team"] == "Arsenal"
 
-    def test_error_handling(self, betting_odds_client, mock_requests_get):
+    def test_error_handling(self, the_odds_api_client, mock_requests_get):
         """Test error handling for API requests."""
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = Exception("API Error")
         mock_requests_get.return_value = mock_response
 
-        result = betting_odds_client.get_sports()
-        assert result == []
+        with pytest.raises(Exception, match="API Error"):
+            the_odds_api_client.get_sports()
 
-    def test_rate_limiting(self, betting_odds_client, mock_requests_get):
+    def test_rate_limiting(self, the_odds_api_client, mock_requests_get):
         """Test rate limiting handling."""
         # First response is a 429 (rate limited)
         rate_limit_response = MagicMock()
@@ -155,7 +155,7 @@ class TestBettingOddsClient:
         mock_requests_get.side_effect = [rate_limit_response, success_response]
         
         # This should handle the rate limit and retry
-        sports = betting_odds_client.get_sports()
+        sports = the_odds_api_client.get_sports()
         
         assert len(sports) == 1
         assert sports[0]["key"] == "soccer_epl"

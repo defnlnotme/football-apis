@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional, Union, Any, cast
 from datetime import datetime, timedelta
 import requests
+import csv
+import io
 from ..base_client import RateLimitedAPIClient
 import logging
 
@@ -28,9 +30,27 @@ class ClubEloClient(RateLimitedAPIClient):
         # Ensure session is properly configured
         self.session.headers.update({
             'X-Auth-Token': self.api_key or '',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Content-Type': 'text/csv',
+            'Accept': 'text/csv'
         })
+    
+    def parse_response(self, response: requests.Response) -> Union[Dict[str, Any], List[Dict[str, Any]], str]:
+        """
+        Parses CSV response from the ClubElo API into a list of dictionaries.
+        """
+        content = response.text
+        if not content.strip():
+            return []
+        
+        try:
+            # Use StringIO to treat the string content as a file
+            csvfile = io.StringIO(content)
+            reader = csv.DictReader(csvfile)
+            # Convert all field names to lowercase for consistency
+            return [{k.lower(): v for k, v in row.items()} for row in reader]
+        except Exception as e:
+            logger.error(f"Error parsing ClubElo CSV response: {e}")
+            return content
     
     def _add_auth(self):
         """Add authentication to the request."""
@@ -48,9 +68,9 @@ class ClubEloClient(RateLimitedAPIClient):
     
     def get_team_elo(
         self, 
-        team_name: str = None, 
-        team_id: int = None,
-        date: str = None
+        team_name: Optional[str] = None, 
+        team_id: Optional[int] = None,
+        date: Optional[str] = None
     ) -> Optional[Dict]:
         """
         Get Elo rating for a specific team.
@@ -68,50 +88,59 @@ class ClubEloClient(RateLimitedAPIClient):
             
         if team_name:
             # Search for team by name
-            teams = self.search_teams(team_name)
+            teams = self.search_teams(query=team_name)
             if not teams:
                 logger.warning(f"No team found with name: {team_name}")
                 return None
                 
-            # Get the first match
+            # Get the first match (assuming search_teams returns matches sorted by relevance or Elo)
             team = teams[0]
-            team_id = team.get("id")
-            if not team_id:
+            team_id = int(cast(str, team.get("id"))) if team.get("id") is not None else None
+            if team_id is None:
                 return None
         
-        # Get team details including current Elo
-        endpoint = f"/{team_id}"
+        # Clubelo API returns historical data for a team directly via /{team_id}
+        # The `get_cached` method will call `get`, which will use `parse_response`
+        # to get a list of dictionaries from the CSV.
+        if team_id is None:
+            return None # Should not happen if previous checks are correct, but for type safety
+        endpoint = f"/{str(team_id)}"
         
         try:
-            response = self.get_cached(endpoint)
-            if not response:
+            # response here will be a list of dicts (parsed from CSV)
+            response_list = cast(List[Dict[str, Any]], self.get_cached(endpoint))
+            if not response_list:
+                return None
+            
+            # Find the most recent rating for the team
+            latest_rating = None
+            for rating in response_list:
+                if latest_rating is None or (rating.get("to") and latest_rating.get("to") and datetime.strptime(cast(str, rating.get("to")), "%Y-%m-%d") > datetime.strptime(cast(str, latest_rating.get("to")), "%Y-%m-%d")):
+                    latest_rating = rating
+            
+            if not latest_rating:
                 return None
                 
             # If a specific date is provided, find the closest historical rating
             if date:
-                historical = response.get("history", [])
-                if not historical:
-                    return None
-                    
-                # Find the most recent rating on or before the specified date
                 target_date = datetime.strptime(date, "%Y-%m-%d").date()
                 closest_rating = None
                 
-                for rating in historical:
-                    rating_date = datetime.strptime(rating.get("from"), "%Y-%m-%d").date()
-                    if rating_date > target_date:
-                        continue
-                    if closest_rating is None or rating_date > datetime.strptime(closest_rating.get("from"), "%Y-%m-%d").date():
-                        closest_rating = rating
+                for rating in response_list:
+                    # Use "from" date for comparison as "to" might be in the future
+                    rating_from_date = datetime.strptime(cast(str, rating.get("from")), "%Y-%m-%d").date() if rating.get("from") else None
+                    if rating_from_date and rating_from_date <= target_date:
+                        if closest_rating is None or (rating.get("from") and closest_rating.get("from") and datetime.strptime(cast(str, rating.get("from")), "%Y-%m-%d").date() > datetime.strptime(cast(str, closest_rating.get("from")), "%Y-%m-%d").date()):
+                            closest_rating = rating
                 
                 if closest_rating:
                     return {
                         "team_id": team_id,
-                        "team_name": response.get("team"),
-                        "country": response.get("country"),
-                        "level": response.get("level"),
-                        "elo": closest_rating.get("elo"),
-                        "rank": closest_rating.get("rank"),
+                        "team_name": closest_rating.get("club"),
+                        "country": closest_rating.get("country"),
+                        "level": int(cast(str, closest_rating.get("level"))) if closest_rating.get("level") is not None else None,
+                        "elo": int(cast(str, closest_rating.get("elo"))) if closest_rating.get("elo") is not None else None,
+                        "rank": int(cast(str, closest_rating.get("rank"))) if closest_rating.get("rank") is not None else None,
                         "from": closest_rating.get("from"),
                         "to": closest_rating.get("to"),
                         "is_current": False
@@ -120,13 +149,13 @@ class ClubEloClient(RateLimitedAPIClient):
             # Return current rating if no date specified or no historical data found
             return {
                 "team_id": team_id,
-                "team_name": response.get("team"),
-                "country": response.get("country"),
-                "level": response.get("level"),
-                "elo": response.get("elo"),
-                "rank": response.get("rank"),
-                "from": response.get("from"),
-                "to": response.get("to"),
+                "team_name": latest_rating.get("club"),
+                "country": latest_rating.get("country"),
+                "level": int(cast(str, latest_rating.get("level"))) if latest_rating.get("level") is not None else None,
+                "elo": int(cast(str, latest_rating.get("elo"))) if latest_rating.get("elo") is not None else None,
+                "rank": int(cast(str, latest_rating.get("rank"))) if latest_rating.get("rank") is not None else None,
+                "from": latest_rating.get("from"),
+                "to": latest_rating.get("to"),
                 "is_current": True
             }
             
@@ -148,20 +177,24 @@ class ClubEloClient(RateLimitedAPIClient):
         params = {"q": query}
         
         try:
-            response = self.get_cached(endpoint, params=params)
-            if not isinstance(response, list):
+            # response here will be a list of dicts (parsed from CSV)
+            response_list = cast(List[Dict[str, Any]], self.get_cached(endpoint, params=params))
+            if not response_list:
                 return []
                 
+            # Filter teams by query (case-insensitive, partial match)
+            # ClubElo's /search endpoint actually returns an exact match or similar, but the data needs to be extracted.
+            # The `parse_response` will convert to lowercase keys. The 'club' key holds the team name.
             return [
                 {
-                    "id": team.get("id"),
-                    "name": team.get("team"),
+                    "id": int(cast(str, team.get("id"))) if team.get("id") is not None else None,
+                    "name": team.get("club"),
                     "country": team.get("country"),
-                    "elo": team.get("elo"),
-                    "rank": team.get("rank")
+                    "elo": int(cast(str, team.get("elo"))) if team.get("elo") is not None else None,
+                    "rank": int(cast(str, team.get("rank"))) if team.get("rank") is not None else None
                 }
-                for team in response
-                if team.get("id") and team.get("team")
+                for team in response_list
+                if team.get("id") and team.get("club") and query.lower() in (team.get("club") or '').lower()
             ]
             
         except Exception as e:
@@ -171,8 +204,8 @@ class ClubEloClient(RateLimitedAPIClient):
     def get_top_teams(
         self, 
         limit: int = 20, 
-        country: str = None, 
-        min_elo: int = None
+        country: Optional[str] = None, 
+        min_elo: Optional[int] = None
     ) -> List[Dict]:
         """
         Get top teams by Elo rating.
@@ -188,28 +221,31 @@ class ClubEloClient(RateLimitedAPIClient):
         endpoint = "/ranking"
         
         try:
-            response = self.get_cached(endpoint)
-            if not isinstance(response, list):
+            # response here will be a list of dicts (parsed from CSV)
+            response_list = cast(List[Dict[str, Any]], self.get_cached(endpoint))
+            if not response_list:
                 return []
                 
             teams = []
-            for team in response:
-                if not team.get("id") or not team.get("team"):
+            for team in response_list:
+                # Ensure 'id' and 'club' (team name) exist
+                if not team.get("id") or not team.get("club"):
                     continue
                     
-                if country and team.get("country") != country:
+                if country and (team.get("country", '') or '').lower() != country.lower():
                     continue
                     
-                if min_elo is not None and team.get("elo", 0) < min_elo:
+                elo = int(cast(str, team.get("elo"))) if team.get("elo") is not None else 0
+                if min_elo is not None and elo < min_elo:
                     continue
                     
                 teams.append({
-                    "rank": team.get("rank"),
-                    "team_id": team.get("id"),
-                    "team_name": team.get("team"),
+                    "rank": int(cast(str, team.get("rank"))) if team.get("rank") is not None else None,
+                    "team_id": int(cast(str, team.get("id"))) if team.get("id") is not None else None,
+                    "team_name": team.get("club"),
                     "country": team.get("country"),
-                    "elo": team.get("elo"),
-                    "level": team.get("level")
+                    "elo": elo,
+                    "level": int(cast(str, team.get("level"))) if team.get("level") is not None else None
                 })
                 
                 if len(teams) >= limit:
@@ -224,8 +260,8 @@ class ClubEloClient(RateLimitedAPIClient):
     def get_historical_elos(
         self, 
         team_id: int, 
-        start_date: str = None, 
-        end_date: str = None
+        start_date: Optional[str] = None, 
+        end_date: Optional[str] = None
     ) -> List[Dict]:
         """
         Get historical Elo ratings for a team over a date range.
@@ -241,33 +277,38 @@ class ClubEloClient(RateLimitedAPIClient):
         endpoint = f"/{team_id}"
         
         try:
-            response = self.get_cached(endpoint)
-            if not response or not isinstance(response.get("history"), list):
+            # response here will be a list of dicts (parsed from CSV)
+            response_list = cast(List[Dict[str, Any]], self.get_cached(endpoint))
+            if not response_list:
                 return []
                 
-            history = response["history"]
-            
+            history = []
+            for rating in response_list:
+                # ClubElo API provides 'from' and 'to' dates in the CSV for historical data
+                # The 'club' key represents the team name
+                history.append({
+                    "date_from": rating.get("from"),
+                    "date_to": rating.get("to"),
+                    "elo": int(cast(str, rating.get("elo"))) if rating.get("elo") is not None else None,
+                    "rank": int(cast(str, rating.get("rank"))) if rating.get("rank") is not None else None,
+                    "club": rating.get("club")
+                })
+
             # Filter by date range if specified
-            if start_date or end_date:
-                start = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else datetime.min.date()
-                end = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else datetime.max.date()
+            filtered_history = []
+            start_dt = datetime.strptime(cast(str, start_date), "%Y-%m-%d").date() if start_date else None
+            end_dt_str = cast(str, end_date) if end_date is not None else datetime.now().strftime("%Y-%m-%d")
+            end_dt = datetime.strptime(end_dt_str, "%Y-%m-%d").date()
+            
+            for entry in history:
+                entry_date_from = datetime.strptime(cast(str, entry.get("date_from")), "%Y-%m-%d").date() if entry.get("date_from") else None
+                entry_date_to = datetime.strptime(cast(str, entry.get("date_to")), "%Y-%m-%d").date() if entry.get("date_to") else None
                 
-                filtered = []
-                for entry in history:
-                    entry_date = datetime.strptime(entry.get("from"), "%Y-%m-%d").date()
-                    if start <= entry_date <= end:
-                        filtered.append(entry)
-                history = filtered
-                
-            return [
-                {
-                    "date": entry.get("from"),
-                    "elo": entry.get("elo"),
-                    "rank": entry.get("rank"),
-                    "matches": entry.get("matches")
-                }
-                for entry in history
-            ]
+                if (start_dt is None or (entry_date_to and start_dt and entry_date_to >= start_dt)) and \
+                   (end_dt is None or (entry_date_from and end_dt and entry_date_from <= end_dt)):
+                    filtered_history.append(entry)
+
+            return filtered_history
             
         except Exception as e:
             logger.error(f"Failed to get historical Elos: {str(e)}")
@@ -277,64 +318,21 @@ class ClubEloClient(RateLimitedAPIClient):
         self, 
         team_id: int, 
         matches: int = 5,
-        competition: str = None
+        competition: Optional[str] = None
     ) -> Dict:
         """
-        Get recent form for a team based on Elo changes.
+        Get recent form (win/loss/draw) for a team.
         
         Args:
             team_id: ClubElo team ID
-            matches: Number of recent matches to include
-            competition: Filter by competition (if available)
+            matches: Number of recent matches to consider
+            competition: Optional filter by competition name
             
         Returns:
-            Dictionary with form information
+            Dictionary with win/loss/draw counts and goal difference
         """
-        endpoint = f"/{team_id}"
-        
-        try:
-            response = self.get_cached(endpoint)
-            if not response or not isinstance(response.get("matches"), list):
-                return {"team_id": team_id, "recent_matches": [], "form_rating": 0}
-                
-            matches_data = response["matches"]
-            
-            # Filter by competition if specified
-            if competition:
-                matches_data = [
-                    m for m in matches_data 
-                    if m.get("competition") and competition.lower() in m.get("competition", "").lower()
-                ]
-            
-            # Get most recent matches
-            recent_matches = sorted(
-                matches_data,
-                key=lambda x: x.get("date", ""),
-                reverse=True
-            )[:matches]
-            
-            # Calculate form rating (points per match: 3 for win, 1 for draw, 0 for loss)
-            points = 0
-            for match in recent_matches:
-                result = match.get("result")
-                if result == "W":
-                    points += 3
-                elif result == "D":
-                    points += 1
-            
-            form_rating = (points / (matches * 3)) * 100  # As percentage
-            
-            return {
-                "team_id": team_id,
-                "team_name": response.get("team"),
-                "recent_matches": recent_matches,
-                "form_rating": round(form_rating, 1),
-                "matches_played": len(recent_matches),
-                "wins": sum(1 for m in recent_matches if m.get("result") == "W"),
-                "draws": sum(1 for m in recent_matches if m.get("result") == "D"),
-                "losses": sum(1 for m in recent_matches if m.get("result") == "L")
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to get team form: {str(e)}")
-            return {"team_id": team_id, "recent_matches": [], "form_rating": 0}
+        # This method is more complex as it requires match data. 
+        # ClubElo API primarily provides Elo ratings, not detailed match results.
+        # This method might need to fetch data from another source or be reconsidered.
+        logger.warning("get_team_form is not fully implemented with ClubElo API. It provides Elo ratings, not detailed match results.")
+        return {"error": "Method not fully implemented for ClubElo API."}
