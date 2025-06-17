@@ -6,21 +6,35 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class BettingOddsClient(BaseAPIClient, CachingMixin, RateLimitMixin):
+class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
     """Client for accessing betting odds data."""
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, cache_enabled: bool = True, cache_ttl: int = 3600):
         """
         Initialize the BettingOddsClient.
         
         Args:
             api_key: API key for The Odds API (https://the-odds-api.com/)
+            cache_enabled: Whether to enable response caching
+            cache_ttl: Time-to-live for cache entries in seconds (default: 1 hour)
         """
-        super().__init__(
+        # Initialize BaseAPIClient first
+        BaseAPIClient.__init__(
+            self,
             api_key=api_key,
             base_url="https://api.the-odds-api.com/v4"
         )
-        self.cache_ttl = 3600  # 1 hour cache TTL for odds data
+        
+        # Initialize RateLimitMixin
+        RateLimitMixin.__init__(self)
+        
+        # Initialize CachingMixin with provided parameters
+        CachingMixin.__init__(self, cache_enabled=cache_enabled, cache_ttl=cache_ttl)
+        
+        # Ensure session is properly configured
+        self.session.headers.update({
+            'Content-Type': 'application/json'
+        })
     
     def _add_auth(self):
         """Add authentication to the request."""

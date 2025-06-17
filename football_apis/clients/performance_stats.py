@@ -6,21 +6,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class PerformanceStatsClient(BaseAPIClient, CachingMixin, RateLimitMixin):
+class PerformanceStatsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
     """Client for accessing team and player performance statistics."""
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, cache_enabled: bool = True, cache_ttl: int = 86400):
         """
         Initialize the PerformanceStatsClient.
         
         Args:
             api_key: API key for authentication (if required)
+            cache_enabled: Whether to enable response caching
+            cache_ttl: Time-to-live for cache entries in seconds (default: 24 hours)
         """
-        super().__init__(
+        # Initialize BaseAPIClient first
+        BaseAPIClient.__init__(
+            self,
             api_key=api_key,
             base_url="https://api.football-data.org/v4"
         )
-        self.cache_ttl = 86400  # 24 hours cache TTL for performance data
+        
+        # Initialize RateLimitMixin
+        RateLimitMixin.__init__(self)
+        
+        # Initialize CachingMixin with provided parameters
+        CachingMixin.__init__(self, cache_enabled=cache_enabled, cache_ttl=cache_ttl)
+        
+        # Ensure session is properly configured
+        self.session.headers.update({
+            'X-Auth-Token': self.api_key or '',
+            'Content-Type': 'application/json'
+        })
     
     def test_connection(self) -> bool:
         """Test the API connection."""

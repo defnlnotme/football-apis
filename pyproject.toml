@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "football-apis"
+version = "0.1.0"
+description = "A Python package for accessing various football data APIs"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "requests>=2.25.0",
+    "python-dotenv>=0.15.0",
+    "pandas>=1.2.0",
+    "beautifulsoup4>=4.9.0",
+    "lxml>=4.6.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/football-apis"
+"Bug Tracker" = "https://github.com/yourusername/football-apis/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["football_apis*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=football_apis --cov-report=term-missing"
