@@ -1,35 +1,29 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any, cast
 from datetime import datetime, timedelta
 import requests
-from ..base_client import BaseAPIClient, CachingMixin, RateLimitMixin
+from ..base_client import RateLimitedAPIClient
 import logging
 
 logger = logging.getLogger(__name__)
 
-class TeamRatingsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
+class ClubEloClient(RateLimitedAPIClient):
     """Client for accessing team strength ratings (Elo, etc.)."""
     
-    def __init__(self, api_key: str = None, cache_enabled: bool = True, cache_ttl: int = 86400):
+    def __init__(self, api_key: Optional[str] = None, cache_enabled: bool = True, cache_ttl: int = 86400):
         """
-        Initialize the TeamRatingsClient.
+        Initialize the ClubEloClient.
         
         Args:
             api_key: API key for authentication (if required)
             cache_enabled: Whether to enable response caching
             cache_ttl: Time-to-live for cache entries in seconds (default: 24 hours)
         """
-        # Initialize BaseAPIClient first
-        BaseAPIClient.__init__(
-            self,
+        super().__init__(
             api_key=api_key,
-            base_url="http://api.clubelo.com"
+            base_url="http://api.clubelo.com",
+            cache_enabled=cache_enabled,
+            cache_ttl=cache_ttl
         )
-        
-        # Initialize RateLimitMixin
-        RateLimitMixin.__init__(self)
-        
-        # Initialize CachingMixin with provided parameters
-        CachingMixin.__init__(self, cache_enabled=cache_enabled, cache_ttl=cache_ttl)
         
         # Ensure session is properly configured
         self.session.headers.update({
@@ -46,7 +40,7 @@ class TeamRatingsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
     def test_connection(self) -> bool:
         """Test the API connection."""
         try:
-            response = self.get("/")
+            response = self.session.get(self.base_url)
             return response.status_code == 200
         except Exception as e:
             logger.error(f"Connection test failed: {str(e)}")

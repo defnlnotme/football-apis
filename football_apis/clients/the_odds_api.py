@@ -1,35 +1,29 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from datetime import datetime, timedelta
 import requests
-from ..base_client import BaseAPIClient, CachingMixin, RateLimitMixin
+from ..base_client import RateLimitedAPIClient
 import logging
 
 logger = logging.getLogger(__name__)
 
-class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
+class TheOddsApiClient(RateLimitedAPIClient):
     """Client for accessing betting odds data."""
     
-    def __init__(self, api_key: str = None, cache_enabled: bool = True, cache_ttl: int = 3600):
+    def __init__(self, api_key: Optional[str] = None, cache_enabled: bool = True, cache_ttl: int = 3600):
         """
-        Initialize the BettingOddsClient.
+        Initialize the TheOddsApiClient.
         
         Args:
             api_key: API key for The Odds API (https://the-odds-api.com/)
             cache_enabled: Whether to enable response caching
             cache_ttl: Time-to-live for cache entries in seconds (default: 1 hour)
         """
-        # Initialize BaseAPIClient first
-        BaseAPIClient.__init__(
-            self,
+        super().__init__(
             api_key=api_key,
-            base_url="https://api.the-odds-api.com/v4"
+            base_url="https://api.the-odds-api.com/v4",
+            cache_enabled=cache_enabled,
+            cache_ttl=cache_ttl
         )
-        
-        # Initialize RateLimitMixin
-        RateLimitMixin.__init__(self)
-        
-        # Initialize CachingMixin with provided parameters
-        CachingMixin.__init__(self, cache_enabled=cache_enabled, cache_ttl=cache_ttl)
         
         # Ensure session is properly configured
         self.session.headers.update({
@@ -39,7 +33,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
     def _add_auth(self):
         """Add authentication to the request."""
         if self.api_key:
-            self.session.params.update({"apiKey": self.api_key})
+            self.session.params = {"apiKey": self.api_key}
     
     def test_connection(self) -> bool:
         """Test the API connection."""
@@ -50,7 +44,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
             logger.error(f"Connection test failed: {str(e)}")
             return False
     
-    def get_sports(self, all_available: bool = False) -> List[Dict]:
+    def get_sports(self, all_available: bool = False) -> List[Dict[str, Any]]:
         """
         Get a list of available sports and their keys.
         
@@ -64,7 +58,8 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
         if all_available:
             params["all"] = "true"
             
-        return self.get_cached("/sports", params=params) or []
+        response = self.get("/sports", params=params)
+        return response if isinstance(response, list) else []
     
     def get_odds(
         self,
@@ -76,7 +71,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
         bookmakers: Optional[str] = None,
         commence_time_from: Optional[Union[str, datetime]] = None,
         commence_time_to: Optional[Union[str, datetime]] = None
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get odds for upcoming events.
         
@@ -114,7 +109,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
             params["commenceTimeTo"] = commence_time_to
         
         endpoint = f"/sports/{sport_key}/odds"
-        response = self.get_cached(endpoint, params=params)
+        response = self.get(endpoint, params=params)
         
         if not isinstance(response, list):
             logger.warning(f"Unexpected response format: {response}")
@@ -127,7 +122,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
         sport_key: str = "soccer_epl",
         days_from: int = 3,
         date_format: str = "iso"
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get scores for recently completed events.
         
@@ -148,7 +143,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
         }
         
         endpoint = f"/sports/{sport_key}/scores"
-        response = self.get_cached(endpoint, params=params)
+        response = self.get(endpoint, params=params)
         
         if not isinstance(response, list):
             logger.warning(f"Unexpected response format: {response}")
@@ -165,7 +160,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
         date_format: str = "iso",
         odds_format: str = "decimal",
         bookmakers: Optional[str] = None
-    ) -> Dict:
+    ) -> Dict[str, Any]:
         """
         Get historical odds for a specific event.
         
@@ -194,14 +189,15 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
             params["bookmakers"] = bookmakers
         
         endpoint = f"/sports/{sport_key}/events/{event_id}/odds"
-        return self.get_cached(endpoint, params=params) or {}
+        response = self.get(endpoint, params=params)
+        return response if isinstance(response, dict) else {}
     
     def get_events(
         self,
         sport_key: str = "soccer_epl",
         date_format: str = "iso",
         bookmakers: Optional[str] = None
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get a list of upcoming events.
         
@@ -221,7 +217,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
             params["bookmakers"] = bookmakers
         
         endpoint = f"/sports/{sport_key}/events"
-        response = self.get_cached(endpoint, params=params)
+        response = self.get(endpoint, params=params)
         
         if not isinstance(response, list):
             logger.warning(f"Unexpected response format: {response}")
@@ -238,7 +234,7 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
         date_format: str = "iso",
         odds_format: str = "decimal",
         bookmakers: Optional[str] = None
-    ) -> Dict:
+    ) -> Dict[str, Any]:
         """
         Get historical odds for events that started at a specific time.
         
@@ -271,4 +267,5 @@ class BettingOddsClient(CachingMixin, RateLimitMixin, BaseAPIClient):
             params["bookmakers"] = bookmakers
         
         endpoint = f"/sports/{sport_key}/odds-history"
-        return self.get_cached(endpoint, params=params) or {}
+        response = self.get(endpoint, params=params)
+        return response if isinstance(response, dict) else {}

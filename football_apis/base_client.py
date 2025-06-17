@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class BaseAPIClient(ABC):
     """Base class for all football API clients."""
     
-    def __init__(self, api_key: str = None, base_url: str = None):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """
         Initialize the base API client.
         
@@ -29,6 +29,7 @@ class BaseAPIClient(ABC):
         
         self.api_key = api_key or os.getenv(f"{self.__class__.__name__.upper()}_API_KEY")
         self.base_url = base_url.rstrip('/') if base_url else ""
+        logger.info(f"[DEBUG] BaseAPIClient initialized with base_url: {self.base_url}")
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'FootballAPIClient/1.0',
@@ -70,6 +71,9 @@ class BaseAPIClient(ABC):
         Raises:
             HTTPError: If the request fails
         """
+        if not self.base_url:
+            raise ValueError("Base URL is required for making API requests")
+            
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = headers or {}
         
@@ -83,6 +87,7 @@ class BaseAPIClient(ABC):
                 json=data,
                 headers={**self.session.headers, **headers}
             )
+            self._handle_response(response)
             response.raise_for_status()
             
             # Handle empty responses
@@ -98,8 +103,13 @@ class BaseAPIClient(ABC):
                 logger.error(f"Response body: {e.response.text}")
             raise
     
+    def _handle_response(self, response):
+        """Hook for subclasses to handle the raw response (e.g., for rate limits)."""
+        pass
+    
     def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, **kwargs):
         """Make a GET request."""
+        logger.info(f"[DEBUG] BaseAPIClient.get called with endpoint: {endpoint}")
         return self._make_request('GET', endpoint, params=params, **kwargs)
     
     def post(self, endpoint: str, data: Optional[Dict[str, Any]] = None, **kwargs):
@@ -122,14 +132,21 @@ class BaseAPIClient(ABC):
         self.session.close()
 
 
-class CachingMixin:
-    """Mixin to add caching functionality to API clients."""
+class CachedAPIClient(BaseAPIClient):
+    """API client with caching functionality."""
     
-    def __init__(self, *args, **kwargs):
-        self._cache = {}
-        self.cache_enabled = kwargs.pop('cache_enabled', True)
-        self.cache_ttl = kwargs.pop('cache_ttl', 300)  # 5 minutes default
+    def __init__(self, *args, cache_enabled: bool = True, cache_ttl: int = 300, **kwargs):
+        """
+        Initialize the cached API client.
+        
+        Args:
+            cache_enabled: Whether to enable response caching
+            cache_ttl: Time-to-live for cache entries in seconds (default: 5 minutes)
+        """
         super().__init__(*args, **kwargs)
+        self._cache = {}
+        self.cache_enabled = cache_enabled
+        self.cache_ttl = cache_ttl
     
     def _get_cache_key(self, endpoint: str, params: Optional[Dict] = None) -> str:
         """Generate a cache key from the endpoint and parameters."""
@@ -172,13 +189,13 @@ class CachingMixin:
         self._cache = {}
 
 
-class RateLimitMixin:
-    """Mixin to handle rate limiting."""
+class RateLimitedAPIClient(CachedAPIClient):
+    """API client with rate limiting functionality."""
     
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.rate_limit_remaining = float('inf')
         self.rate_limit_reset = 0
-        super().__init__(*args, **kwargs)
     
     def _update_rate_limits(self, response):
         """Update rate limit information from response headers."""
@@ -198,10 +215,6 @@ class RateLimitMixin:
                 import time
                 logger.warning(f"Rate limit reached. Waiting {wait_seconds:.1f} seconds...")
                 time.sleep(wait_seconds + 1)  # Add a small buffer
-                
-    def _make_request(self, *args, **kwargs):
-        """Override _make_request to handle rate limiting."""
-        self._check_rate_limit()
-        response = super()._make_request(*args, **kwargs)
+    
+    def _handle_response(self, response):
         self._update_rate_limits(response)
-        return response
