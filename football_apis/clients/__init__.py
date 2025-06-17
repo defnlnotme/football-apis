@@ -4,14 +4,13 @@ Football API Clients
 This module contains the client implementations for various football data APIs.
 """
 
-from .match_history import MatchHistoryClient
-from .performance_stats import PerformanceStatsClient
-from .betting_odds import BettingOddsClient
-from .team_ratings import TeamRatingsClient
+from .the_odds_api import TheOddsApiClient
+from .clubelo_api import ClubEloClient
+from .football_data_api import FootballDataPerformanceStatsClient, FootballDataMatchHistoryClient
 
 __all__ = [
-    'MatchHistoryClient',
-    'PerformanceStatsClient',
-    'BettingOddsClient',
-    'TeamRatingsClient',
+    'TheOddsApiClient',
+    'ClubEloClient',
+    'FootballDataPerformanceStatsClient',
+    'FootballDataMatchHistoryClient'
 ]

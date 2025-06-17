@@ -65,16 +65,9 @@ async def fetch_betting_odds(output_dir: Path, args: argparse.Namespace) -> None
         client = TheOddsApiClient(api_key=api_key, cache_enabled=False)
         logger.info("Client initialized successfully")
         
-        # Get available sports
-        sports = client.get_sports()
-        if not sports:
-            logger.warning("No sports data returned")
-            return
-            
         # Prepare output data
         output_data = {
             "timestamp": datetime.now().isoformat(),
-            "sports": sports,
             "results": {}
         }
         
@@ -96,6 +89,7 @@ async def fetch_betting_odds(output_dir: Path, args: argparse.Namespace) -> None
                     )
                 elif method_name == 'get_sports':
                     data = method(all_available=args.all_available if hasattr(args, 'all_available') else False)
+                    output_data["sports"] = data  # Only add sports if requested
                 elif method_name == 'get_scores':
                     data = method(
                         sport_key=args.sport or "soccer_italy_serie_a",
@@ -134,6 +128,8 @@ async def fetch_betting_odds(output_dir: Path, args: argparse.Namespace) -> None
                         odds_format=args.odds_format or "decimal",
                         bookmakers=args.bookmakers
                     )
+                else:
+                    data = method()
                 
                 output_data["results"][method_name] = data
                 logger.info(f"✅ Successfully fetched data from {method_name}")

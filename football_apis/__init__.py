@@ -11,16 +11,15 @@ Available clients:
 - TeamRatingsClient: Access team Elo ratings and strength metrics
 """
 
-from .clients.match_history import MatchHistoryClient
-from .clients.performance_stats import PerformanceStatsClient
-from .clients.betting_odds import BettingOddsClient
-from .clients.team_ratings import TeamRatingsClient
+from .clients.the_odds_api import TheOddsApiClient
+from .clients.clubelo_api import ClubEloClient
+from .clients.football_data_api import FootballDataPerformanceStatsClient, FootballDataMatchHistoryClient
 
 __version__ = "0.1.0"
 
 __all__ = [
-    "MatchHistoryClient",
-    "PerformanceStatsClient",
-    "BettingOddsClient",
-    "TeamRatingsClient",
+    "TheOddsApiClient",
+    "ClubEloClient",
+    "FootballDataPerformanceStatsClient",
+    "FootballDataMatchHistoryClient",
 ]
