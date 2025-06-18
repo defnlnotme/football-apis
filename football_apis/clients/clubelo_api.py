@@ -131,7 +131,7 @@ class ClubEloClient(RateLimitedAPIClient):
     def get_top_teams(
         self,
         date: Optional[str] = None,
-        limit: int = 20,
+        limit: Optional[int] = None,
         country: Optional[str] = None,
         min_elo: Optional[int] = None
     ) -> List[Dict]:
@@ -160,28 +160,25 @@ class ClubEloClient(RateLimitedAPIClient):
             teams = []
             for team in response_list:
                 # Ensure 'id' and 'club' (team name) exist
-                if not team.get("id") or not team.get("club"):
+                if not team.get("club"):
                     continue
 
                 if country and (team.get("country", '') or '').lower() != country.lower():
                     continue
 
-                elo = int(cast(str, team.get("elo"))) if team.get("elo") is not None else 0
+                elo = float(cast(str, team.get("elo"))) if team.get("elo") is not None else 0
                 if min_elo is not None and elo < min_elo:
                     continue
 
                 teams.append({
-                    "rank": int(cast(str, team.get("rank"))) if team.get("rank") is not None else None,
-                    "team_id": int(cast(str, team.get("id"))) if team.get("id") is not None else None,
+                    "rank": int(cast(str, team.get("rank"))) if team.get("rank") != "None" else None,
                     "team_name": team.get("club"),
                     "country": team.get("country"),
                     "elo": elo,
-                    "level": int(cast(str, team.get("level"))) if team.get("level") is not None else None
+                    "level": int(cast(str, team.get("level"))) if team.get("level") != "None" else None
                 })
-
-                if len(teams) >= limit:
+                if limit is not None and len(teams) >= limit:
                     break
-
             return teams
 
         except Exception as e:
