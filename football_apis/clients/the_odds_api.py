@@ -70,7 +70,8 @@ class TheOddsApiClient(RateLimitedAPIClient):
         odds_format: str = "decimal",
         bookmakers: Optional[str] = None,
         commence_time_from: Optional[Union[str, datetime]] = None,
-        commence_time_to: Optional[Union[str, datetime]] = None
+        commence_time_to: Optional[Union[str, datetime]] = None,
+        event_ids: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Get odds for upcoming events.
@@ -84,6 +85,7 @@ class TheOddsApiClient(RateLimitedAPIClient):
             bookmakers: Comma-separated list of bookmakers to include
             commence_time_from: Filter events starting after this time
             commence_time_to: Filter events starting before this time
+            event_ids: Comma-separated game ids to filter the response
             
         Returns:
             List of events with their odds
@@ -107,6 +109,9 @@ class TheOddsApiClient(RateLimitedAPIClient):
             if isinstance(commence_time_to, datetime):
                 commence_time_to = commence_time_to.isoformat()
             params["commenceTimeTo"] = commence_time_to
+            
+        if event_ids:
+            params["eventIds"] = event_ids
         
         endpoint = f"/sports/{sport_key}/odds"
         response = self.get(endpoint, params=params)
@@ -154,49 +159,47 @@ class TheOddsApiClient(RateLimitedAPIClient):
     def get_historical_odds(
         self,
         sport_key: str,
-        event_id: str,
+        date: Union[str, datetime],
         regions: str = "eu",
         markets: str = "h2h,spreads,totals",
         date_format: str = "iso",
-        odds_format: str = "decimal",
-        bookmakers: Optional[str] = None
+        odds_format: str = "decimal"
     ) -> Dict[str, Any]:
         """
-        Get historical odds for a specific event.
+        Get historical odds for events that started at a specific time.
         
         Note: This endpoint might not be available in the free tier.
         
         Args:
             sport_key: The sport key
-            event_id: The event ID
+            date: The timestamp of the data snapshot to be returned (ISO8601 format)
             regions: Regions to include (comma-separated)
             markets: Markets to include (comma-separated)
             date_format: Format for dates (iso or unix)
             odds_format: Format for odds
-            bookmakers: Comma-separated list of bookmakers to include
             
         Returns:
-            Historical odds data for the event
+            Historical odds data for the events
         """
+        if isinstance(date, datetime):
+            date = date.isoformat()
+        
         params = {
             "regions": regions,
             "markets": markets,
             "dateFormat": date_format,
             "oddsFormat": odds_format,
+            "date": date
         }
         
-        if bookmakers:
-            params["bookmakers"] = bookmakers
-        
-        endpoint = f"/sports/{sport_key}/events/{event_id}/odds"
+        endpoint = f"/historical/sports/{sport_key}/odds"
         response = self.get(endpoint, params=params)
         return response if isinstance(response, dict) else {}
     
     def get_events(
         self,
         sport_key: str = "soccer_epl",
-        date_format: str = "iso",
-        bookmakers: Optional[str] = None
+        date_format: str = "iso"
     ) -> List[Dict[str, Any]]:
         """
         Get a list of upcoming events.
@@ -204,7 +207,6 @@ class TheOddsApiClient(RateLimitedAPIClient):
         Args:
             sport_key: The sport key (default: soccer_epl)
             date_format: Format for dates (iso or unix)
-            bookmakers: Comma-separated list of bookmakers to include
             
         Returns:
             List of upcoming events
@@ -212,9 +214,6 @@ class TheOddsApiClient(RateLimitedAPIClient):
         params = {
             "dateFormat": date_format,
         }
-        
-        if bookmakers:
-            params["bookmakers"] = bookmakers
         
         endpoint = f"/sports/{sport_key}/events"
         response = self.get(endpoint, params=params)
@@ -228,12 +227,11 @@ class TheOddsApiClient(RateLimitedAPIClient):
     def get_historical_odds_archive(
         self,
         sport_key: str,
-        commence_time: Union[str, datetime],
+        date: Union[str, datetime],
         regions: str = "eu",
         markets: str = "h2h,spreads,totals",
         date_format: str = "iso",
-        odds_format: str = "decimal",
-        bookmakers: Optional[str] = None
+        odds_format: str = "decimal"
     ) -> Dict[str, Any]:
         """
         Get historical odds for events that started at a specific time.
@@ -242,29 +240,25 @@ class TheOddsApiClient(RateLimitedAPIClient):
         
         Args:
             sport_key: The sport key
-            commence_time: The start time of the events
+            date: The timestamp of the data snapshot to be returned (ISO8601 format)
             regions: Regions to include (comma-separated)
             markets: Markets to include (comma-separated)
             date_format: Format for dates (iso or unix)
             odds_format: Format for odds
-            bookmakers: Comma-separated list of bookmakers to include
             
         Returns:
             Historical odds data for the events
         """
-        if isinstance(commence_time, datetime):
-            commence_time = commence_time.isoformat()
+        if isinstance(date, datetime):
+            date = date.isoformat()
         
         params = {
             "regions": regions,
             "markets": markets,
             "dateFormat": date_format,
             "oddsFormat": odds_format,
-            "commenceTime": commence_time
+            "date": date
         }
-        
-        if bookmakers:
-            params["bookmakers"] = bookmakers
         
         endpoint = f"/sports/{sport_key}/odds-history"
         response = self.get(endpoint, params=params)

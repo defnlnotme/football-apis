@@ -85,7 +85,8 @@ async def fetch_the_odds_api(output_dir: Path, args: argparse.Namespace) -> None
                         odds_format=args.odds_format or "decimal",
                         bookmakers=args.bookmakers,
                         commence_time_from=args.date_from,
-                        commence_time_to=args.date_to
+                        commence_time_to=args.date_to,
+                        event_ids=args.event_ids
                     )
                 elif method_name == 'get_sports':
                     data = method(all_available=args.all_available if hasattr(args, 'all_available') else False)
@@ -99,34 +100,30 @@ async def fetch_the_odds_api(output_dir: Path, args: argparse.Namespace) -> None
                 elif method_name == 'get_events':
                     data = method(
                         sport_key=args.sport or "soccer_italy_serie_a",
-                        date_format=args.date_format or "iso",
-                        bookmakers=args.bookmakers
+                        date_format=args.date_format or "iso"
                     )
                 elif method_name == 'get_historical_odds':
-                    if not args.event_id:
-                        logger.error("❌ event_id is required for get_historical_odds")
-                        continue
+                    # Use today's date if odds_date is not provided, in ISO 8601 format with time
+                    odds_date = args.odds_date or datetime.now().strftime('%Y-%m-%dT00:00:00Z')
                     data = method(
                         sport_key=args.sport or "soccer_italy_serie_a",
-                        event_id=args.event_id,
+                        date=odds_date,
                         regions=args.region or "eu",
                         markets=args.markets or "h2h,spreads,totals",
                         date_format=args.date_format or "iso",
-                        odds_format=args.odds_format or "decimal",
-                        bookmakers=args.bookmakers
+                        odds_format=args.odds_format or "decimal"
                     )
                 elif method_name == 'get_historical_odds_archive':
-                    if not args.commence_time:
-                        logger.error("❌ commence_time is required for get_historical_odds_archive")
+                    if not args.odds_date:
+                        logger.error("❌ odds-date is required for get_historical_odds_archive")
                         continue
                     data = method(
                         sport_key=args.sport or "soccer_italy_serie_a",
-                        commence_time=args.commence_time,
+                        date=args.odds_date,
                         regions=args.region or "eu",
                         markets=args.markets or "h2h,spreads,totals",
                         date_format=args.date_format or "iso",
-                        odds_format=args.odds_format or "decimal",
-                        bookmakers=args.bookmakers
+                        odds_format=args.odds_format or "decimal"
                     )
                 else:
                     data = method()
@@ -168,11 +165,11 @@ async def fetch_clubelo(output_dir: Path, args: argparse.Namespace) -> None:
                 if method_name == 'get_team_elo':
                     data = method(
                         team_name=args.team,
-                        date=args.date
+                        date=args.elo_date
                     )
                 elif method_name == 'get_top_teams':
                     data = method(
-                        date=args.date,
+                        date=args.elo_date,
                         limit=args.limit if hasattr(args, 'limit') else 20,
                         country=args.country,
                         min_elo=args.min_elo
@@ -514,6 +511,8 @@ Examples:
                              help=argparse.SUPPRESS)
     TheOddsApiClient_group.add_argument('--date-to', type=str,
                              help=argparse.SUPPRESS)
+    TheOddsApiClient_group.add_argument('--event-ids', type=str,
+                             help=argparse.SUPPRESS)
     TheOddsApiClient_group.add_argument('--all-available', action='store_true',
                              help=argparse.SUPPRESS)
     TheOddsApiClient_group.add_argument('--days-from', type=int,
@@ -522,7 +521,7 @@ Examples:
                              help=argparse.SUPPRESS)
     TheOddsApiClient_group.add_argument('--event-id', type=str,
                              help=argparse.SUPPRESS)
-    TheOddsApiClient_group.add_argument('--commence-time', type=str,
+    TheOddsApiClient_group.add_argument('--odds-date', type=str,
                              help=argparse.SUPPRESS)
     
     # Team ratings specific arguments
@@ -533,7 +532,7 @@ Examples:
                              help=argparse.SUPPRESS)
     ClubEloClient_group.add_argument('--team', type=str,
                              help=argparse.SUPPRESS)
-    ClubEloClient_group.add_argument('--date', type=str,
+    ClubEloClient_group.add_argument('--elo-date', type=str,
                              help=argparse.SUPPRESS)
     ClubEloClient_group.add_argument('--country', type=str,
                              help=argparse.SUPPRESS)
@@ -592,30 +591,27 @@ Key Features:
 - Call multiple methods in a single run
 
 Available Methods:
-- get_odds [--sport SPORT] [--region REGION] [--markets MARKETS] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS] [--date-from DATE_FROM] [--date-to DATE_TO]: Get odds for upcoming events (default).
+- get_odds [--sport SPORT] [--region REGION] [--markets MARKETS] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS] [--date-from DATE_FROM] [--date-to DATE_TO] [--event-ids EVENT_IDS]: Get odds for upcoming events (default).
 - get_sports [--all-available]: Get list of available sports.
 - get_scores [--sport SPORT] [--days-from DAYS_FROM] [--date-format DATE_FORMAT]: Get scores for recently completed events.
-- get_events [--sport SPORT] [--date-format DATE_FORMAT] [--bookmakers BOOKMAKERS]: Get list of upcoming events.
-- get_historical_odds --sport SPORT --event-id EVENT_ID [--region REGION] [--markets MARKETS] [--date-format DATE_FORMAT] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS]: Get historical odds for a specific event.
-- get_historical_odds_archive --sport SPORT --commence-time COMMENCE_TIME [--region REGION] [--markets MARKETS] [--date-format DATE_FORMAT] [--odds-format ODDS_FORMAT] [--bookmakers BOOKMAKERS]: Get historical odds for events at a specific time.
+- get_events [--sport SPORT] [--date-format DATE_FORMAT]: Get list of upcoming events.
+- get_historical_odds [--sport SPORT] [--odds-date ODDS_DATE] [--region REGION] [--markets MARKETS] [--date-format DATE_FORMAT] [--odds-format ODDS_FORMAT]: Get historical odds for events at a specific time (defaults to today if no date provided). Note: Requires a paid API plan.
+- get_historical_odds_archive --sport SPORT --odds-date ODDS_DATE [--region REGION] [--markets MARKETS] [--date-format DATE_FORMAT] [--odds-format ODDS_FORMAT]: Get historical odds for events at a specific time. Note: Requires a paid API plan.
 
 Example Usage:
 1. Get odds for Premier League matches:
    python client.py the-odds-api --sport soccer_epl
-
 2. List available sports:
    python client.py the-odds-api --the-odds-api-method get_sports
-
 3. Get scores for recent matches:
    python client.py the-odds-api --the-odds-api-method get_scores --sport soccer_epl --days-from 3
-
-4. Get historical odds for an event:
-   python client.py the-odds-api --the-odds-api-method get_historical_odds --sport soccer_epl --event-id 12345
-
-5. Call multiple methods in one run:
+4. Get historical odds for today's events (requires paid plan):
+   python client.py the-odds-api --the-odds-api-method get_historical_odds --sport soccer_epl
+5. Get historical odds for a specific date (requires paid plan):
+   python client.py the-odds-api --the-odds-api-method get_historical_odds --sport soccer_epl --odds-date 2024-01-01T00:00:00Z
+6. Call multiple methods in one run:
    python client.py the-odds-api --the-odds-api-method get_sports get_odds get_scores --sport soccer_epl
-
-6. List available parameters:
+7. List available parameters:
    python client.py the-odds-api --list-params
 """)
         elif endpoint == 'clubelo':
