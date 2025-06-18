@@ -86,9 +86,9 @@ def the_odds_api_client():
 
 @pytest.fixture
 def clubelo_client():
-    """Fixture for ClubEloClient with test API key"""
+    """Fixture for ClubEloClient"""
     from football_apis.clients.clubelo_api import ClubEloClient
-    return ClubEloClient(api_key="test_api_key")
+    return ClubEloClient()
 
 @pytest.fixture
 def football_data_client():

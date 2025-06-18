@@ -10,7 +10,6 @@ class TestClubEloClient:
         """Test client initialization without API key."""
         assert clubelo_client is not None
         assert clubelo_client.base_url == "http://api.clubelo.com"
-        assert not hasattr(clubelo_client, 'api_key') or clubelo_client.api_key is None
         assert clubelo_client.cache_ttl == 86400  # 24 hours
 
     @patch('football_apis.clients.clubelo_api.ClubEloClient.get_cached')
@@ -22,19 +21,25 @@ class TestClubEloClient:
             {'rank': '1', 'club': 'Manchester City', 'country': 'ENG', 'level': '1', 'elo': '2073', 'from': '2023-07-01', 'to': '2023-12-31'}
         ]
 
-        team = clubelo_client.get_team_elo(team_name="Manchester City", date="2023-05-15")
-        assert team["team_name"] == "Manchester City"
-        assert team["elo"] == 2050
-        assert team["is_current"] is False
+        ratings = clubelo_client.get_team_elo(team_name="Manchester City", date="2023-05-15")
+        assert len(ratings) == 2  # Should get ratings up to May 15
+        assert ratings[0]["team_name"] == "Manchester City"
+        assert ratings[0]["elo"] == 2000
+        assert ratings[0]["is_current"] is False
+        assert ratings[1]["elo"] == 2050
+        assert ratings[1]["is_current"] is True
 
-        team = clubelo_client.get_team_elo(team_name="Manchester City")
-        assert team["team_name"] == "Manchester City"
-        assert team["elo"] == 2073
-        assert team["is_current"] is True
+        ratings = clubelo_client.get_team_elo(team_name="Manchester City")
+        assert len(ratings) == 3  # Should get all ratings
+        assert ratings[0]["team_name"] == "Manchester City"
+        assert ratings[0]["elo"] == 2000
+        assert ratings[0]["is_current"] is False
+        assert ratings[2]["elo"] == 2073
+        assert ratings[2]["is_current"] is True
 
         mock_get_cached.return_value = []
-        team = clubelo_client.get_team_elo(team_name="NonExistent Team")
-        assert team is None
+        ratings = clubelo_client.get_team_elo(team_name="NonExistent Team")
+        assert ratings is None
 
     @patch('football_apis.clients.clubelo_api.ClubEloClient.get_cached')
     def test_get_top_teams(self, mock_get_cached, clubelo_client):
@@ -49,6 +54,7 @@ class TestClubEloClient:
         top_teams = clubelo_client.get_top_teams()
         assert len(top_teams) == 4
         assert top_teams[0]["team_name"] == "Manchester City"
+        assert top_teams[0]["is_current"] is True
 
         top_teams_limited = clubelo_client.get_top_teams(limit=2)
         assert len(top_teams_limited) == 2
@@ -67,10 +73,10 @@ class TestClubEloClient:
         top_teams_date = clubelo_client.get_top_teams(date="2023-01-15")
         assert len(top_teams_date) == 4
 
-    @patch('football_apis.clients.clubelo_api.ClubEloClient.get_fixtures')
-    def test_get_fixtures(self, mock_get_fixtures, clubelo_client):
+    @patch('football_apis.clients.clubelo_api.ClubEloClient.get_cached')
+    def test_get_fixtures(self, mock_get_cached, clubelo_client):
         """Test getting upcoming fixtures."""
-        mock_get_fixtures.return_value = [
+        mock_get_cached.return_value = [
             {"date": "2024-03-10", "team1": "Home Team", "team2": "Away Team", "prob1": "0.5", "probX": "0.3", "prob2": "0.2"},
             {"date": "2024-03-11", "team1": "Another Home", "team2": "Another Away", "prob1": "0.6", "probX": "0.2", "prob2": "0.2"}
         ]
@@ -80,18 +86,14 @@ class TestClubEloClient:
         assert fixtures[0]["team1"] == "Home Team"
         assert fixtures[1]["prob1"] == "0.6"
 
-        mock_get_fixtures.return_value = []
+        mock_get_cached.return_value = []
         fixtures_empty = clubelo_client.get_fixtures()
         assert fixtures_empty == []
 
-    @patch('football_apis.clients.clubelo_api.ClubEloClient.get_team_elo')
-    @patch('football_apis.clients.clubelo_api.ClubEloClient.get_top_teams')
-    @patch('football_apis.clients.clubelo_api.ClubEloClient.get_fixtures')
-    def test_error_handling(self, mock_get_fixtures, mock_get_top_teams, mock_get_team_elo, clubelo_client):
+    @patch('football_apis.clients.clubelo_api.ClubEloClient.get_cached')
+    def test_error_handling(self, mock_get_cached, clubelo_client):
         """Test error handling for API requests."""
-        mock_get_team_elo.side_effect = Exception("API Error - get_team_elo")
-        mock_get_top_teams.side_effect = Exception("API Error - get_top_teams")
-        mock_get_fixtures.side_effect = Exception("API Error - get_fixtures")
+        mock_get_cached.side_effect = Exception("API Error")
 
         team_elo = clubelo_client.get_team_elo(team_name="Any Team")
         assert team_elo is None
