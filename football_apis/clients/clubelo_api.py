@@ -31,6 +31,36 @@ class ClubEloClient(RateLimitedAPIClient):
             'Accept': 'text/csv'
         })
     
+    def _parse_elo_rating(self, rating: Dict[str, Any], is_current: bool = False) -> Dict[str, Any]:
+        """
+        Parse a single Elo rating entry into a standardized format.
+        
+        Args:
+            rating: Dictionary containing raw Elo rating data
+            is_current: Whether this is the current/latest rating
+            
+        Returns:
+            Dictionary with standardized Elo rating data
+        """
+        def safe_int_parse(value: Optional[str]) -> Optional[int]:
+            if value is None or value == "None":
+                return None
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
+
+        return {
+            "team_name": rating.get("club"),
+            "country": rating.get("country"),
+            "level": safe_int_parse(rating.get("level")),
+            "elo": safe_int_parse(rating.get("elo")),
+            "rank": safe_int_parse(rating.get("rank")),
+            "from": rating.get("from"),
+            "to": rating.get("to"),
+            "is_current": is_current
+        }
+    
     def parse_response(self, response: requests.Response) -> Union[Dict[str, Any], List[Dict[str, Any]], str]:
         """
         Parses CSV response from the ClubElo API into a list of dictionaries.
@@ -62,67 +92,54 @@ class ClubEloClient(RateLimitedAPIClient):
         self, 
         team_name: Optional[str] = None, 
         date: Optional[str] = None
-    ) -> Optional[Dict]:
+    ) -> Optional[List[Dict]]:
         """
-        Get Elo rating for a specific team.
+        Get Elo ratings for a specific team.
+        
+        This endpoint provides the ranking history for a club. For the exact spelling of a club's name, 
+        check the ranking. Values before 1960 should be considered provisional.
         
         Args:
-            team_name: Name of the team (e.g., "Barcelona")
-            date: Date in YYYY-MM-DD format (default: latest available)
+            team_name: Name of the team (e.g., "Barcelona"). Must match the exact spelling from the ranking.
+            date: Optional date in YYYY-MM-DD format to filter ratings
             
         Returns:
-            Dictionary containing Elo rating data or None if not found
+            List of dictionaries containing Elo rating data, or None if not found.
+            Each rating includes historical data with from/to dates.
         """
         if not team_name:
             raise ValueError("team_name must be provided")
 
-        # Clubelo API returns historical data for a team directly via /CLUBNAME
-        # The `get_cached` method will call `get`, which will use `parse_response`
-        # to get a list of dictionaries from the CSV.
         endpoint = f"/{team_name}"
 
         try:
-            # response here will be a list of dicts (parsed from CSV)
             response_list = cast(List[Dict[str, Any]], self.get_cached(endpoint))
             if not response_list:
                 return None
 
-            # If a specific date is provided, find the closest historical rating
+            # Sort ratings by date (from oldest to newest)
+            sorted_ratings = sorted(
+                response_list,
+                key=lambda x: datetime.strptime(cast(str, x.get("from", "")), "%Y-%m-%d").date()
+            )
+
+            # If a specific date is provided, filter ratings up to that date
             if date:
                 target_date = datetime.strptime(date, "%Y-%m-%d").date()
-                closest_rating = None
+                filtered_ratings = [
+                    rating for rating in sorted_ratings
+                    if rating.get("from") and datetime.strptime(cast(str, rating.get("from")), "%Y-%m-%d").date() <= target_date
+                ]
+            else:
+                filtered_ratings = sorted_ratings
 
-                for rating in response_list:
-                    # Use "from" date for comparison as "to" might be in the future
-                    rating_from_date = datetime.strptime(cast(str, rating.get("from")), "%Y-%m-%d").date() if rating.get("from") else None
-                    if rating_from_date and rating_from_date <= target_date:
-                        if closest_rating is None or (rating.get("from") and closest_rating.get("from") and datetime.strptime(cast(str, rating.get("from")), "%Y-%m-%d").date() > datetime.strptime(cast(str, closest_rating.get("from")), "%Y-%m-%d").date()):
-                            closest_rating = rating
+            # Parse all ratings, marking the last one as current
+            parsed_ratings = []
+            for i, rating in enumerate(filtered_ratings):
+                is_current = (i == len(filtered_ratings) - 1)
+                parsed_ratings.append(self._parse_elo_rating(rating, is_current=is_current))
 
-                if closest_rating:
-                    return {
-                        "team_name": closest_rating.get("club"),
-                        "country": closest_rating.get("country"),
-                        "level": int(cast(str, closest_rating.get("level"))) if closest_rating.get("level") is not None else None,
-                        "elo": int(cast(str, closest_rating.get("elo"))) if closest_rating.get("elo") is not None else None,
-                        "rank": int(cast(str, closest_rating.get("rank"))) if closest_rating.get("rank") is not None else None,
-                        "from": closest_rating.get("from"),
-                        "to": closest_rating.get("to"),
-                        "is_current": False
-                    }
-
-            # If no date specified or no historical data found, return the latest rating
-            latest_rating = response_list[-1] # Assuming the last entry is the most recent
-            return {
-                "team_name": latest_rating.get("club"),
-                "country": latest_rating.get("country"),
-                "level": int(cast(str, latest_rating.get("level"))) if latest_rating.get("level") is not None else None,
-                "elo": int(cast(str, latest_rating.get("elo"))) if latest_rating.get("elo") is not None else None,
-                "rank": int(cast(str, latest_rating.get("rank"))) if latest_rating.get("rank") is not None else None,
-                "from": latest_rating.get("from"),
-                "to": latest_rating.get("to"),
-                "is_current": True
-            }
+            return parsed_ratings
 
         except Exception as e:
             logger.error(f"Failed to get team Elo: {str(e)}")
@@ -138,6 +155,9 @@ class ClubEloClient(RateLimitedAPIClient):
         """
         Get top teams by Elo rating for a specific date.
 
+        This endpoint provides the full ranking for each day since 1939. Values before 1960 
+        should be considered provisional.
+
         Args:
             date: Date in YYYY-MM-DD format (default: latest available).
             limit: Maximum number of teams to return.
@@ -152,14 +172,12 @@ class ClubEloClient(RateLimitedAPIClient):
         endpoint = f"/{date}"
 
         try:
-            # response here will be a list of dicts (parsed from CSV)
             response_list = cast(List[Dict[str, Any]], self.get_cached(endpoint))
             if not response_list:
                 return []
 
             teams = []
             for team in response_list:
-                # Ensure 'id' and 'club' (team name) exist
                 if not team.get("club"):
                     continue
 
@@ -170,13 +188,9 @@ class ClubEloClient(RateLimitedAPIClient):
                 if min_elo is not None and elo < min_elo:
                     continue
 
-                teams.append({
-                    "rank": int(cast(str, team.get("rank"))) if team.get("rank") != "None" else None,
-                    "team_name": team.get("club"),
-                    "country": team.get("country"),
-                    "elo": elo,
-                    "level": int(cast(str, team.get("level"))) if team.get("level") != "None" else None
-                })
+                parsed_rating = self._parse_elo_rating(team, is_current=True)
+                teams.append(parsed_rating)
+                
                 if limit is not None and len(teams) >= limit:
                     break
             return teams
@@ -185,32 +199,19 @@ class ClubEloClient(RateLimitedAPIClient):
             logger.error(f"Failed to get top teams: {str(e)}")
             return []
     
-    def get_team_form(
-        self, 
-        team_id: int, 
-        matches: int = 5,
-        competition: Optional[str] = None
-    ) -> Dict:
-        """
-        Get recent form (win/loss/draw) for a team.
-        
-        Args:
-            team_id: ClubElo team ID
-            matches: Number of recent matches to consider
-            competition: Optional filter by competition name
-            
-        Returns:
-            Dictionary with win/loss/draw counts and goal difference
-        """
-        # This method is more complex as it requires match data. 
-        # ClubElo API primarily provides Elo ratings, not detailed match results.
-        # This method might need to fetch data from another source or be reconsidered.
-        logger.warning("get_team_form is not fully implemented with ClubElo API. It provides Elo ratings, not detailed match results.")
-        return {"error": "Method not fully implemented for ClubElo API."}
-
     def get_fixtures(self) -> List[Dict]:
         """
         Get calculated probabilities for all upcoming matches.
+
+        This endpoint provides the calculated probabilities for all upcoming matches. Probabilities are given for:
+        - All goal differences between -5 and +5
+        - Aggregated probability for all goal differences smaller than -5 or bigger than +5
+        - Each exact result with 6 or less total goals
+
+        For traditional match odds (1X2):
+        - Sum all negative goal differences for an away win
+        - Sum all positive goal differences for a home win
+        - Draw is goal difference = 0
 
         Returns:
             List of dictionaries with fixture probabilities.
