@@ -33,7 +33,8 @@ class TheOddsApiClient(RateLimitedAPIClient):
     def _add_auth(self):
         """Add authentication to the request."""
         if self.api_key:
-            self.session.params = {"apiKey": self.api_key}
+            # Don't set session params, let each request handle its own params
+            pass
     
     def test_connection(self) -> bool:
         """Test the API connection."""
@@ -263,3 +264,11 @@ class TheOddsApiClient(RateLimitedAPIClient):
         endpoint = f"/sports/{sport_key}/odds-history"
         response = self.get(endpoint, params=params)
         return response if isinstance(response, dict) else {}
+
+    def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Make a GET request."""
+        if params is None:
+            params = {}
+        if self.api_key:
+            params["apiKey"] = self.api_key
+        return super().get(endpoint, params=params, **kwargs)

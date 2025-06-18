@@ -107,11 +107,30 @@ class BaseAPIClient(ABC):
                 json=data,
                 headers={**self.session.headers, **headers}
             )
+            
+            # Handle rate limiting before raising any errors
+            if response.status_code == 429:
+                self._handle_response(response)
+                # Retry the request
+                return self._make_request(method, endpoint, params, data, headers)
+            
+            # For non-rate-limit responses, handle normally
             self._handle_response(response)
             response.raise_for_status()
             
             return self.parse_response(response)
             
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 429:
+                # Handle rate limit error
+                self._handle_response(e.response)
+                # Retry the request
+                return self._make_request(method, endpoint, params, data, headers)
+            logger.error(f"Request failed: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+            raise
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {str(e)}")
             if hasattr(e, 'response') and e.response is not None:
@@ -233,4 +252,15 @@ class RateLimitedAPIClient(CachedAPIClient):
                 time.sleep(wait_seconds + 1)  # Add a small buffer
     
     def _handle_response(self, response):
+        """Handle the response, including rate limiting."""
         self._update_rate_limits(response)
+        
+        # Handle rate limit response
+        if response.status_code == 429:
+            reset_time = int(response.headers.get('x-ratelimit-requests-reset', 0))
+            if reset_time > 0:
+                wait_seconds = max(0, reset_time - datetime.now().timestamp())
+                if wait_seconds > 0:
+                    import time
+                    logger.warning(f"Rate limit reached. Waiting {wait_seconds:.1f} seconds...")
+                    time.sleep(wait_seconds + 1)  # Add a small buffer

@@ -1,6 +1,7 @@
 """Tests for the TheOddsApiClient."""
 import pytest
 from unittest.mock import MagicMock, patch, ANY
+import requests
 
 class TestTheOddsApiClient:
     """Test cases for TheOddsApiClient."""
@@ -10,8 +11,7 @@ class TestTheOddsApiClient:
         assert the_odds_api_client is not None
         assert the_odds_api_client.base_url == "https://api.the-odds-api.com/v4"
         assert the_odds_api_client.api_key == "test_api_key"
-        assert "apiKey" in the_odds_api_client.session.params
-        assert the_odds_api_client.session.params["apiKey"] == "test_api_key"
+        assert the_odds_api_client.session.params == {}
 
     def test_test_connection_success(self, the_odds_api_client, mock_requests_get):
         """Test successful connection to the API."""
@@ -21,8 +21,8 @@ class TestTheOddsApiClient:
 
         assert the_odds_api_client.test_connection() is True
         mock_requests_get.assert_called_once_with(
-            "GET",
-            "https://api.the-odds-api.com/v4/sports",
+            method="GET",
+            url="https://api.the-odds-api.com/v4/sports",
             params={"apiKey": "test_api_key"},
             json=None,
             headers=ANY
@@ -122,7 +122,7 @@ class TestTheOddsApiClient:
 
         historical = the_odds_api_client.get_historical_odds(
             sport_key="soccer_epl",
-            event_id="test123"
+            date="2023-01-01T15:00:00Z"
         )
         
         assert "data" in historical
@@ -146,17 +146,26 @@ class TestTheOddsApiClient:
             'x-ratelimit-requests-remaining': '0',
             'x-ratelimit-requests-reset': '60'
         }
-        
+        rate_limit_response.raise_for_status.side_effect = requests.exceptions.HTTPError("429 Rate Limited")
+        rate_limit_response.request = MagicMock()
+        rate_limit_response.request.method = "GET"
+        rate_limit_response.request.path_url = "/sports"
+        rate_limit_response.request.params = {"apiKey": "test_api_key"}
+        rate_limit_response.request.json = None
+        rate_limit_response.request.headers = {}
+
         # Second response is successful
         success_response = MagicMock()
+        success_response.status_code = 200
         success_response.json.return_value = [{"key": "soccer_epl", "title": "EPL"}]
-        
+        success_response.raise_for_status.return_value = None
+
         # Set up side effects
         mock_requests_get.side_effect = [rate_limit_response, success_response]
-        
+
         # This should handle the rate limit and retry
         sports = the_odds_api_client.get_sports()
-        
+
         assert len(sports) == 1
         assert sports[0]["key"] == "soccer_epl"
         assert mock_requests_get.call_count == 2
