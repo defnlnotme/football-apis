@@ -103,7 +103,6 @@ async def fetch_the_odds_api(output_dir: Path, args: argparse.Namespace) -> None
                         date_format=args.date_format or "iso"
                     )
                 elif method_name == 'get_historical_odds':
-                    # Use today's date if odds_date is not provided, in ISO 8601 format with time
                     odds_date = args.odds_date or datetime.now().strftime('%Y-%m-%dT00:00:00Z')
                     data = method(
                         sport_key=args.sport or "soccer_italy_serie_a",
@@ -128,18 +127,24 @@ async def fetch_the_odds_api(output_dir: Path, args: argparse.Namespace) -> None
                 else:
                     data = method()
                 
-                output_data["results"][method_name] = data
-                logger.info(f"✅ Successfully fetched data from {method_name}")
+                if not (isinstance(data, dict) and "error" in data):
+                    output_data["results"][method_name] = data
+                    logger.info(f"✅ Successfully fetched data from {method_name}")
+                else:
+                    logger.warning(f"❌ Skipping {method_name} due to error in result.")
                 
             except Exception as e:
                 logger.error(f"❌ Error in {method_name}: {str(e)}")
-                output_data["results"][method_name] = {"error": str(e)}
+                # Do not add to results if error
         
-        # Save to file
-        output_file = output_dir / f"the-odds-api_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(output_file, 'w') as f:
-            json.dump(output_data, f, indent=2)
-        logger.info(f"✅ Saved betting odds data to {output_file}")
+        # Only save to file if there is at least one successful result
+        if output_data["results"]:
+            output_file = output_dir / f"the-odds-api_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(output_file, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            logger.info(f"✅ Saved betting odds data to {output_file}")
+        else:
+            logger.warning("❌ Not saving file because all methods returned an error.")
         
     except Exception as e:
         logger.error(f"❌ Error in betting odds fetch: {str(e)}", exc_info=True)
@@ -179,18 +184,24 @@ async def fetch_clubelo(output_dir: Path, args: argparse.Namespace) -> None:
                 else:
                     data = method()
                 
-                output_data["results"][method_name] = data
-                logger.info(f"✅ Successfully fetched data from {method_name}")
+                if not (isinstance(data, dict) and "error" in data):
+                    output_data["results"][method_name] = data
+                    logger.info(f"✅ Successfully fetched data from {method_name}")
+                else:
+                    logger.warning(f"❌ Skipping {method_name} due to error in result.")
                 
             except Exception as e:
                 logger.error(f"❌ Error in {method_name}: {str(e)}")
-                output_data["results"][method_name] = {"error": str(e)}
+                # Do not add to results if error
         
-        # Save to file
-        output_file = output_dir / f"clubelo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(output_file, 'w') as f:
-            json.dump(output_data, f, indent=2)
-        logger.info(f"✅ Saved team ratings data to {output_file}")
+        # Only save to file if there is at least one successful result
+        if output_data["results"]:
+            output_file = output_dir / f"clubelo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(output_file, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            logger.info(f"✅ Saved team ratings data to {output_file}")
+        else:
+            logger.warning("❌ Not saving file because all methods returned an error.")
         
     except Exception as e:
         logger.error(f"❌ Error in team ratings fetch: {str(e)}", exc_info=True)
@@ -218,9 +229,7 @@ async def fetch_football_data(output_dir: Path, args: argparse.Namespace) -> Non
                         logger.error("❌ team_id is required for get_team_statistics")
                         continue
                     data = method(
-                        team_id=args.team_id,
-                        season=args.season,
-                        competition_id=args.competition_id
+                        team_id=args.team_id
                     )
                 elif method_name == 'get_team_matches':
                     if not args.team_id:
@@ -252,19 +261,58 @@ async def fetch_football_data(output_dir: Path, args: argparse.Namespace) -> Non
                         season=args.season,
                         competition_id=args.competition_id
                     )
+                elif method_name == 'search_teams':
+                    data = method(
+                        name=args.team_name,
+                        season=args.season,
+                        limit=args.fd_limit,
+                        offset=args.offset
+                    )
+                elif method_name == 'get_areas':
+                    data = method()
+                elif method_name == 'get_area':
+                    if not args.area_id:
+                        logger.error("❌ area_id is required for get_area")
+                        continue
+                    data = method(area_id=args.area_id)
+                elif method_name == 'get_person':
+                    if not args.person_id:
+                        logger.error("❌ person_id is required for get_person")
+                        continue
+                    data = method(person_id=args.person_id)
+                elif method_name == 'get_person_matches':
+                    if not args.person_id:
+                        logger.error("❌ person_id is required for get_person_matches")
+                        continue
+                    data = method(
+                        person_id=args.person_id,
+                        lineup=args.lineup,
+                        e=args.e,
+                        date_from=args.person_date_from,
+                        date_to=args.person_date_to,
+                        competitions=args.person_competitions,
+                        limit=args.person_limit,
+                        offset=args.person_offset
+                    )
                 
-                output_data["results"][method_name] = data
-                logger.info(f"✅ Successfully fetched data from {method_name}")
+                if not (isinstance(data, dict) and "error" in data):
+                    output_data["results"][method_name] = data
+                    logger.info(f"✅ Successfully fetched data from {method_name}")
+                else:
+                    logger.warning(f"❌ Skipping {method_name} due to error in result.")
                 
             except Exception as e:
                 logger.error(f"❌ Error in {method_name}: {str(e)}")
-                output_data["results"][method_name] = {"error": str(e)}
+                # Do not add to results if error
         
-        # Save to file
-        output_file = output_dir / f"football-data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(output_file, 'w') as f:
-            json.dump(output_data, f, indent=2)
-        logger.info(f"✅ Saved performance stats data to {output_file}")
+        # Only save to file if there is at least one successful result
+        if output_data["results"]:
+            output_file = output_dir / f"football-data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(output_file, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            logger.info(f"✅ Saved performance stats data to {output_file}")
+        else:
+            logger.warning("❌ Not saving file because all methods returned an error.")
         
     except Exception as e:
         logger.error(f"❌ Error in performance stats fetch: {str(e)}", exc_info=True)
@@ -409,15 +457,38 @@ def list_available_parameters(endpoint: str) -> None:
             output.append("   - season: Season year")
             output.append("   - competition_id: ID of the competition")
             
-            output.append("\n5. get_head_to_head --team1 TEAM1_ID --team2 TEAM2_ID [--limit LIMIT] [--date-from DATE_FROM] [--date-to DATE_TO]: Get head-to-head matches between two teams.")
+            output.append("\n5. get_head_to_head --team1 TEAM1_ID --team2 TEAM2_ID [--limit LIMIT] [--person-date-from DATE_FROM] [--person-date-to DATE_TO]: Get head-to-head matches between two teams.")
             output.append("   - team1: ID of the first team")
             output.append("   - team2: ID of the second team")
             output.append("   - limit: Maximum number of matches to return")
-            output.append("   - date_from: Start date of the match range")
-            output.append("   - date_to: End date of the match range")
+            output.append("   - person-date-from: Start date of the match range")
+            output.append("   - person-date-to: End date of the match range")
             
             output.append("\n6. get_team_info --team-id TEAM_ID: Get detailed information about a team.")
             output.append("   - team_id: ID of the team")
+            
+            output.append("\n7. get_match_details --match-id MATCH_ID: Get detailed information about a specific match.")
+            output.append("\n8. search_teams [--team-name TEAM_NAME] [--season SEASON] [--fd-limit FD_LIMIT] [--offset OFFSET]: Search for teams by name or get a list of teams.")
+            output.append("   - team_name: Optional name to search for teams")
+            output.append("   - season: Optional season year to filter teams")
+            output.append("   - fd-limit: Optional maximum number of teams to return")
+            output.append("   - offset: Optional offset for pagination")
+            
+            output.append("\n9. get_areas: Get a list of all areas (countries, regions, etc).")
+            output.append("   - No parameters.")
+            output.append("\n10. get_area --area-id AREA_ID: Get details for a specific area by its ID.")
+            output.append("   - area_id: ID of the area")
+            output.append("\n11. get_person --person-id PERSON_ID: Get details for a specific person (player, staff, referee, etc).")
+            output.append("   - person_id: ID of the person")
+            output.append("\n12. get_person_matches --person-id PERSON_ID [--lineup LINEUP] [--e E] [--person-date-from DATE_FROM] [--person-date-to DATE_TO] [--person-competitions COMPETITIONS] [--person-limit LIMIT] [--person-offset OFFSET]: Get matches for a specific person.")
+            output.append("   - person_id: ID of the person")
+            output.append("   - lineup: Filter by lineup (STARTING, BENCH)")
+            output.append("   - e: Event type (GOAL, ASSIST, SUB_IN, SUB_OUT)")
+            output.append("   - person_date_from: Start date for matches")
+            output.append("   - person_date_to: End date for matches")
+            output.append("   - person_competitions: Filter by competitions")
+            output.append("   - person_limit: Maximum number of matches to return")
+            output.append("   - person_offset: Offset for pagination")
             
         else:
             logger.error(f"❌ Error listing parameters: '{endpoint}'")
@@ -478,6 +549,24 @@ Examples:
 
   # Get match history with multiple methods
   python client.py football-data --football-data-method get_team_matches get_head_to_head --team1 81 --team2 65 --fd-limit 10
+
+  # Search for teams by name
+  python client.py football-data --football-data-method search_teams --team-name "Manchester"
+
+  # Get all teams (without search)
+  python client.py football-data --football-data-method search_teams
+
+  # Get all areas
+  python client.py football-data --football-data-method get_areas
+
+  # Get details for a specific area
+  python client.py football-data --football-data-method get_area --area-id 2072
+
+  # Get details for a specific person
+  python client.py football-data --football-data-method get_person --person-id 16275
+
+  # Search for persons by name
+  python client.py football-data --football-data-method get_person_matches --person-id 16275 --person-limit 5
 """
     )
     
@@ -544,9 +633,10 @@ Examples:
     # Performance stats specific arguments
     FootballDataClient_group = parser.add_argument_group('FootballDataClient')
     FootballDataClient_group.add_argument('--football-data-method', type=str, nargs='+',
-                           choices=['get_team_statistics', 'get_team_matches', 'get_team_standings', 'get_player_statistics', 'get_head_to_head', 'get_team_info', 'get_competition_matches', 'get_match_details'],
+                           choices=['get_team_statistics', 'get_team_matches', 'get_team_standings', 'get_player_statistics', 'get_head_to_head', 'get_team_info', 'get_competition_matches', 'get_match_details', 'search_teams', 'get_areas', 'get_area', 'get_person', 'get_person_matches'],
                            default=['get_team_statistics'],
                            help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--team-id', type=int, help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--season', type=int,
                            help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--competition-id', type=int,
@@ -561,6 +651,22 @@ Examples:
                            help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--competitions', type=str,
                            help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--team-name', type=str,
+                           help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--offset', type=int,
+                           help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--area-id', type=int, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-id', type=int, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-name', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-nationality', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-position', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--lineup', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--e', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-date-from', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-date-to', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-competitions', type=str, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-limit', type=int, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--person-offset', type=int, help=argparse.SUPPRESS)
     
     # Map endpoint to its argument group
     endpoint_groups = {
@@ -658,10 +764,15 @@ Available Methods:
 - get_team_matches --team-id TEAM_ID [--season SEASON] [--competition-id COMPETITION_ID] [--status STATUS] [--fd-limit FD_LIMIT] [--competitions COMPETITIONS]: Get team matches for a specific season and competition, or recent matches for a team.
 - get_team_standings --team-id TEAM_ID --competition-id COMPETITION_ID [--season SEASON]: Get team standings in a competition.
 - get_player_statistics --player-id PLAYER_ID [--season SEASON] [--competition-id COMPETITION_ID]: Get player statistics for a specific season and competition.
-- get_head_to_head --team1 TEAM1_ID --team2 TEAM2_ID [--limit LIMIT] [--date-from DATE_FROM] [--date-to DATE_TO]: Get head-to-head matches between two teams.
+- get_head_to_head --team1 TEAM1_ID --team2 TEAM2_ID [--limit LIMIT] [--person-date-from DATE_FROM] [--person-date-to DATE_TO]: Get head-to-head matches between two teams.
 - get_team_info --team-id TEAM_ID: Get detailed information about a team.
 - get_competition_matches --competition-id COMPETITION_ID [--season SEASON] [--matchday MATCHDAY]: Get matches for a specific competition.
 - get_match_details --match-id MATCH_ID: Get detailed information about a specific match.
+- search_teams [--team-name TEAM_NAME] [--season SEASON] [--fd-limit FD_LIMIT] [--offset OFFSET]: Search for teams by name or get a list of teams.
+- get_areas: Get a list of all areas (countries, regions, etc).
+- get_area --area-id AREA_ID: Get details for a specific area by its ID.
+- get_person --person-id PERSON_ID: Get details for a specific person (player, staff, referee, etc).
+- get_person_matches --person-id PERSON_ID [--lineup LINEUP] [--e E] [--person-date-from DATE_FROM] [--person-date-to DATE_TO] [--person-competitions COMPETITIONS] [--person-limit LIMIT] [--person-offset OFFSET]: Get matches for a specific person.
 
 Example Usage:
 1. Get team statistics:
@@ -675,8 +786,26 @@ Example Usage:
 
 4. Get match history between two teams:
    python client.py football-data --football-data-method get_head_to_head --team1 81 --team2 65 --fd-limit 10
+
+5. Search for teams by name:
+   python client.py football-data --football-data-method search_teams --team-name "Manchester"
+
+6. Get all teams (without search):
+   python client.py football-data --football-data-method search_teams
+
+7. Get all areas:
+   python client.py football-data --football-data-method get_areas
+
+8. Get details for a specific area:
+   python client.py football-data --football-data-method get_area --area-id 2072
+
+9. Get details for a specific person:
+   python client.py football-data --football-data-method get_person --person-id 16275
+
+10. Get matches for a person:
+   python client.py football-data --football-data-method get_person_matches --person-id 16275 --person-limit 5
 """)
-        return
+            return
     
     if args.list_params:
         if len(args.endpoints) != 1:

@@ -6,6 +6,10 @@ from typing import Dict, Any, Optional, List, Union
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+import pickle
+import threading
+import time
+from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -16,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 class BaseAPIClient(ABC):
     """Base class for all football API clients."""
+    
+    # Class-level lock and last-request tracking for throttling
+    _domain_last_request_time = {}
+    _domain_lock = threading.Lock()
     
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         """
@@ -73,7 +81,8 @@ class BaseAPIClient(ABC):
         endpoint: str, 
         params: Optional[Dict[str, Any]] = None, 
         data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
+        retries: int = 0  # Add retries parameter, default 0
     ) -> Union[Dict[str, Any], List[Dict[str, Any]], str]:
         """
         Make an HTTP request to the API.
@@ -84,6 +93,7 @@ class BaseAPIClient(ABC):
             params: Query parameters
             data: Request body data
             headers: Additional headers
+            retries: Number of times this request has been retried due to 429
             
         Returns:
             Parsed JSON response or raw text if JSON decoding fails
@@ -97,6 +107,20 @@ class BaseAPIClient(ABC):
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = headers or {}
         
+        # --- Throttle logic: 1 second per domain ---
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        with BaseAPIClient._domain_lock:
+            last_time = BaseAPIClient._domain_last_request_time.get(domain, 0)
+            now = time.time()
+            elapsed = now - last_time
+            if elapsed < 1.0:
+                wait_time = 1.0 - elapsed
+                logger.debug(f"Throttling: waiting {wait_time:.2f}s before next request to {domain}")
+                time.sleep(wait_time)
+            BaseAPIClient._domain_last_request_time[domain] = time.time()
+        # --- End throttle logic ---
+
         logger.info(f"Making {method} request to {url}")
         
         try:
@@ -111,8 +135,12 @@ class BaseAPIClient(ABC):
             # Handle rate limiting before raising any errors
             if response.status_code == 429:
                 self._handle_response(response)
-                # Retry the request
-                return self._make_request(method, endpoint, params, data, headers)
+                if retries < 2:
+                    logger.warning(f"429 received, retrying request ({retries+1}/2)...")
+                    return self._make_request(method, endpoint, params, data, headers, retries=retries+1)
+                else:
+                    logger.error(f"429 received after {retries+1} attempts. Giving up.")
+                    response.raise_for_status()
             
             # For non-rate-limit responses, handle normally
             self._handle_response(response)
@@ -122,10 +150,13 @@ class BaseAPIClient(ABC):
             
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 429:
-                # Handle rate limit error
                 self._handle_response(e.response)
-                # Retry the request
-                return self._make_request(method, endpoint, params, data, headers)
+                if retries < 2:
+                    logger.warning(f"429 received (exception), retrying request ({retries+1}/2)...")
+                    return self._make_request(method, endpoint, params, data, headers, retries=retries+1)
+                else:
+                    logger.error(f"429 received after {retries+1} attempts (exception). Giving up.")
+                    raise
             logger.error(f"Request failed: {str(e)}")
             if hasattr(e, 'response') and e.response is not None:
                 logger.error(f"Response status: {e.response.status_code}")
@@ -170,58 +201,83 @@ class BaseAPIClient(ABC):
 class CachedAPIClient(BaseAPIClient):
     """API client with caching functionality."""
     
-    def __init__(self, *args, cache_enabled: bool = True, cache_ttl: int = 300, **kwargs):
+    def __init__(self, *args, cache_enabled: bool = True, cache_ttl: int = 300, cache_file: Optional[str] = None, **kwargs):
         """
         Initialize the cached API client.
         
         Args:
             cache_enabled: Whether to enable response caching
             cache_ttl: Time-to-live for cache entries in seconds (default: 5 minutes)
+            cache_file: Path to the persistent cache file
         """
         super().__init__(*args, **kwargs)
-        self._cache = {}
         self.cache_enabled = cache_enabled
         self.cache_ttl = cache_ttl
+        # Determine cache file path
+        if cache_file is None:
+            class_name = self.__class__.__name__.lower()
+            cache_file = os.path.join("cache", f"{class_name}_cache.pkl")
+        self.cache_file = cache_file
+        # Ensure cache directory exists
+        os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
+        self._cache = self._load_cache()
+    
+    def _load_cache(self):
+        """Load cache from the persistent file if it exists."""
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, "rb") as f:
+                    return pickle.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load cache from {self.cache_file}: {e}")
+        return {}
+    
+    def _save_cache(self):
+        """Save the current cache to the persistent file."""
+        try:
+            with open(self.cache_file, "wb") as f:
+                pickle.dump(self._cache, f)
+        except Exception as e:
+            logger.warning(f"Failed to save cache to {self.cache_file}: {e}")
     
     def _get_cache_key(self, endpoint: str, params: Optional[Dict] = None) -> str:
-        """Generate a cache key from the endpoint and parameters."""
         params_str = json.dumps(params or {}, sort_keys=True)
         return f"{endpoint}:{params_str}"
     
     def _is_cache_valid(self, cache_entry: Dict) -> bool:
-        """Check if a cache entry is still valid."""
         if not cache_entry:
             return False
-            
         timestamp = cache_entry.get('timestamp', 0)
         return (datetime.now().timestamp() - timestamp) < self.cache_ttl
     
-    def get_cached(self, endpoint: str, params: Optional[Dict] = None, **kwargs):
-        """Get a cached response if available and valid."""
+    def get_cached(self, endpoint: str, params: Optional[Dict] = None, return_cache_status: bool = False, **kwargs):
         if not self.cache_enabled:
-            return self.get(endpoint, params, **kwargs)
-            
+            data = self.get(endpoint, params, **kwargs)
+            if return_cache_status:
+                return data, False
+            return data
         cache_key = self._get_cache_key(endpoint, params)
         cached = self._cache.get(cache_key)
-        
         if cached and self._is_cache_valid(cached):
             logger.debug(f"Cache hit for {cache_key}")
+            if return_cache_status:
+                return cached['data'], True
             return cached['data']
-            
         logger.debug(f"Cache miss for {cache_key}")
         data = self.get(endpoint, params, **kwargs)
-        
         if data is not None:
             self._cache[cache_key] = {
                 'data': data,
                 'timestamp': datetime.now().timestamp()
             }
-            
+            self._save_cache()
+        if return_cache_status:
+            return data, False
         return data
     
     def clear_cache(self):
-        """Clear the cache."""
         self._cache = {}
+        self._save_cache()
 
 
 class RateLimitedAPIClient(CachedAPIClient):

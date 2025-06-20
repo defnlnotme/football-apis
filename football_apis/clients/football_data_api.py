@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timedelta
+import time
 
 from football_apis.base_client import BaseAPIClient, CachedAPIClient, RateLimitedAPIClient
 
@@ -34,14 +35,11 @@ class FootballDataClient(RateLimitedAPIClient):
             return False
 
     # --- Performance Stats Methods ---
-    def get_team_statistics(self, team_id: int, season: Optional[int] = None, competition_id: Optional[int] = None) -> Dict[str, Any]:
-        """Get team statistics for a specific season and competition."""
-        params: Dict[str, Union[str, int]] = {}
-        if season:
-            params['season'] = str(season)
-        if competition_id:
-            params['competition'] = str(competition_id)
-        response = self.get(f"/teams/{team_id}/statistics", params=params)
+    def get_team_statistics(self, team_id: int) -> Dict[str, Any]:
+        """Get team details (no direct statistics endpoint in Football-Data.org v4 API).
+        Note: The v4 API does not provide a direct team statistics endpoint. This method returns team details instead.
+        """
+        response = self.get(f"/teams/{team_id}")
         return response if isinstance(response, dict) else {"error": "Invalid response format"}
 
     def get_team_matches(self, team_id: int, season: Optional[int] = None, competition_id: Optional[int] = None, status: str = "FINISHED", limit: Optional[int] = None, competitions: Optional[List[str]] = None) -> Dict[str, Any]:
@@ -92,10 +90,46 @@ class FootballDataClient(RateLimitedAPIClient):
         response = self.get(f"/teams/{team_id}")
         return response if isinstance(response, dict) else {"error": "Invalid response format"}
 
-    def search_teams(self, name: str) -> Dict[str, Any]:
-        """Search for teams by name."""
-        response = self.get("/teams", params={'name': name})
-        return response if isinstance(response, dict) else {"error": "Invalid response format"}
+    def search_teams(self, name: Optional[str] = None, season: Optional[int] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> Dict[str, Any]:
+        """Search for teams by name or get a list of teams. If offset=-1, fetches all teams by paginating through the API."""
+        if offset == -1:
+            # Fetch all teams by paginating
+            all_teams = []
+            current_offset = 0
+            page_limit = limit if limit else 50  # Use provided limit or default to 50 per page
+            while True:
+                page_params: Dict[str, Union[str, int]] = {}
+                if name:
+                    page_params['name'] = name
+                if season:
+                    page_params['season'] = str(season)
+                page_params['limit'] = page_limit
+                page_params['offset'] = current_offset
+                try:
+                    response, from_cache = self.get_cached("/teams", params=page_params, return_cache_status=True)
+                except Exception as e:
+                    logger.error(f"Error fetching teams at offset {current_offset}: {e}")
+                    break
+                if not (isinstance(response, dict) and 'teams' in response):
+                    break
+                teams = response['teams']
+                all_teams.extend(teams)
+                if len(teams) < page_limit:
+                    break
+                current_offset += len(teams)
+            return {'teams': all_teams}
+        else:
+            params: Dict[str, Union[str, int]] = {}
+            if name:
+                params['name'] = name
+            if season:
+                params['season'] = str(season)
+            if limit:
+                params['limit'] = limit
+            if offset:
+                params['offset'] = offset
+            response = self.get_cached("/teams", params=params)
+            return response if isinstance(response, dict) else {"error": "Invalid response format"}
 
     def get_competition_matches(self, competition_id: int, season: Optional[int] = None, matchday: Optional[int] = None) -> Dict[str, Any]:
         """Get matches for a specific competition."""
@@ -111,3 +145,46 @@ class FootballDataClient(RateLimitedAPIClient):
         """Get detailed information about a specific match."""
         response = self.get(f"/matches/{match_id}")
         return response if isinstance(response, dict) else {"error": "Invalid response format"} 
+
+    # --- Person (Player/Staff) Methods ---
+    def get_person(self, person_id: int) -> Dict[str, Any]:
+        """Get details for a specific person (player, staff, referee, etc)."""
+        response = self.get(f"/persons/{person_id}")
+        return response if isinstance(response, dict) else {"error": "Invalid response format"}
+
+    def get_person_matches(self, person_id: int, lineup: Optional[str] = None, e: Optional[str] = None, date_from: Optional[str] = None, date_to: Optional[str] = None, competitions: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> Dict[str, Any]:
+        """Get matches for a specific person (player, staff, referee, etc). Supports filters: lineup, e, dateFrom, dateTo, competitions, limit, offset."""
+        params: Dict[str, Union[str, int]] = {}
+        if lineup:
+            params["lineup"] = lineup
+        if e:
+            params["e"] = e
+        if date_from:
+            params["dateFrom"] = date_from
+        if date_to:
+            params["dateTo"] = date_to
+        if competitions:
+            params["competitions"] = competitions
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
+        response = self.get(f"/persons/{person_id}/matches", params=params)
+        return response if isinstance(response, dict) else {"error": "Invalid response format"}
+
+    # --- Area (Country/Region) Methods ---
+    def get_areas(self) -> Dict[str, Any]:
+        """Get a list of all areas (countries, regions, etc), using cache."""
+        response = self.get_cached("/areas")
+        return response if isinstance(response, dict) else {"error": "Invalid response format"}
+
+    def get_area(self, area_id: int) -> Dict[str, Any]:
+        """Get details for a specific area by its ID. Tries to find the area in cached get_areas first."""
+        areas_response = self.get_areas()
+        if isinstance(areas_response, dict) and "areas" in areas_response:
+            for area in areas_response["areas"]:
+                if area.get("id") == area_id:
+                    return area
+        # Fallback to API call if not found in cache
+        response = self.get(f"/areas/{area_id}")
+        return response if isinstance(response, dict) else {"error": "Invalid response format"}
