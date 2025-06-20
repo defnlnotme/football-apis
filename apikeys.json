@@ -2,5 +2,9 @@
     "the-odds-api": {
         "url": "https://the-odds-api.com",
         "api_key": "36d28d6506d794715a812401e41f7e6b"
+    },
+    "football-data": {
+        "url": "https://api.football-data.org",
+        "api_key": "47b9c2d8ff9f41c8a5918a8ae7dc7c75"
     }
 }

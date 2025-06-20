@@ -294,6 +294,20 @@ async def fetch_football_data(output_dir: Path, args: argparse.Namespace) -> Non
                         limit=args.person_limit,
                         offset=args.person_offset
                     )
+                elif method_name == 'get_match_details':
+                    if not args.match_id:
+                        logger.error("❌ match_id is required for get_match_details")
+                        continue
+                    data = method(match_id=args.match_id)
+                elif method_name == 'get_competition_matches':
+                    if not args.competition_id:
+                        logger.error("❌ competition_id is required for get_competition_matches")
+                        continue
+                    data = method(
+                        competition_id=args.competition_id,
+                        season=args.season,
+                        matchday=args.matchday
+                    )
                 
                 if not (isinstance(data, dict) and "error" in data):
                     output_data["results"][method_name] = data
@@ -490,6 +504,11 @@ def list_available_parameters(endpoint: str) -> None:
             output.append("   - person_limit: Maximum number of matches to return")
             output.append("   - person_offset: Offset for pagination")
             
+            output.append("\n13. get_competition_matches --competition-id COMPETITION_ID [--season SEASON] [--matchday MATCHDAY]: Get matches for a specific competition.")
+            output.append("   - competition_id: ID of the competition")
+            output.append("   - season: Season year")
+            output.append("   - matchday: Matchday number")
+            
         else:
             logger.error(f"❌ Error listing parameters: '{endpoint}'")
             return
@@ -556,7 +575,7 @@ Examples:
   # Get all teams (without search)
   python client.py football-data --football-data-method search_teams
 
-  # Get all areas
+  # Get all areas (countries/regions)
   python client.py football-data --football-data-method get_areas
 
   # Get details for a specific area
@@ -565,8 +584,12 @@ Examples:
   # Get details for a specific person
   python client.py football-data --football-data-method get_person --person-id 16275
 
-  # Search for persons by name
+  # Get matches for a person
   python client.py football-data --football-data-method get_person_matches --person-id 16275 --person-limit 5
+
+Notes:
+- Some endpoints (e.g., get_match_details) may return 403 errors if your API subscription does not include access to restricted resources.
+- Use --list-params to see all available CLI arguments for an endpoint.
 """
     )
     
@@ -667,6 +690,8 @@ Examples:
     FootballDataClient_group.add_argument('--person-competitions', type=str, help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--person-limit', type=int, help=argparse.SUPPRESS)
     FootballDataClient_group.add_argument('--person-offset', type=int, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--match-id', type=int, help=argparse.SUPPRESS)
+    FootballDataClient_group.add_argument('--matchday', type=int, help=argparse.SUPPRESS)
     
     # Map endpoint to its argument group
     endpoint_groups = {
@@ -793,7 +818,7 @@ Example Usage:
 6. Get all teams (without search):
    python client.py football-data --football-data-method search_teams
 
-7. Get all areas:
+7. Get all areas (countries/regions):
    python client.py football-data --football-data-method get_areas
 
 8. Get details for a specific area:
