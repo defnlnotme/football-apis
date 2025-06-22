@@ -185,3 +185,5 @@ cache/**/*.html
 uv.lock
 
 tmp/
+
+cache/**/*[0-9].json
