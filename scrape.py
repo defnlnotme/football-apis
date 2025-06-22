@@ -585,7 +585,15 @@ def save_competitions_cache(site_name: str, data: dict) -> bool:
         return False
 
 def extract_all_competitions(site_name: str, site_info: dict) -> dict:
-    """Extract competitions from all URLs in the site's competition list, merging results."""
+    """Extract competitions from all URLs in the site's competition list, merging results. If competitions.json exists, load and return its contents instead of fetching again."""
+    import os
+    cache_file = get_competitions_cache_file_path(site_name)
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load competitions.json for {site_name}: {str(e)}. Refetching...")
     base_url = site_info["url"]
     comp_urls = site_info.get("competition", [base_url])
     all_competitions = []
@@ -678,6 +686,17 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
                         print(f"\033[92m✓ Using cached competitions data\033[0m")
                         display_competitions(competitions_data, site_name)
                         return True
+                # If competitions.json exists (even if expired), load and display it instead of fetching again
+                cache_file = get_competitions_cache_file_path(site_name)
+                if cache_file.exists():
+                    try:
+                        with open(cache_file, 'r', encoding='utf-8') as f:
+                            competitions_data = json.load(f)
+                        print(f"\033[93m⚠ Using existing competitions.json (expired cache)\033[0m")
+                        display_competitions(competitions_data, site_name)
+                        return True
+                    except Exception as e:
+                        logger.error(f"Failed to load competitions.json for {site_name}: {str(e)}. Refetching...")
                 print(f"\033[94mExtracting competitions from cached content...\033[0m")
                 competition_data = extract_all_competitions(site_name, SITE_URLS[site_name])
                 if "error" in competition_data:
