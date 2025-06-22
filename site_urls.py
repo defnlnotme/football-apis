@@ -12,6 +12,9 @@ SITE_URLS = {
             "/continents/concacaf",
             "/continents/afc",
             "/continents/ofc",
+        ],
+        "teams": [
+            "/teams"
         ]
     },
     "transfermarkt": {

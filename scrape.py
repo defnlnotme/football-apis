@@ -174,9 +174,9 @@ def clear_cache(site_name: Optional[str] = None) -> int:
             print(f"\033[93mNo cache directory found to clear\033[0m")
     return cleared_count
 
-# Competition extraction agent system prompt
+# Competition extraction agent system prompt (with {nation} placeholder)
 COMPETITION_EXTRACTION_PROMPT = """
-You are a specialized football competition data extraction agent. Your task is to analyze Markdown content (as returned by Firecrawl from football websites) and extract a comprehensive list of competitions, tournaments, and leagues mentioned on the page.
+You are a specialized football competition data extraction agent. Your task is to analyze raw HTML content (as returned by Firecrawl or other scrapers from football websites) and extract a comprehensive list of all competitions, tournaments, and leagues mentioned on the page.
 
 Your responsibilities include:
 1. Identifying all football competitions, tournaments, and leagues mentioned in the content
@@ -184,6 +184,12 @@ Your responsibilities include:
 3. Organizing competitions by category (domestic leagues, international tournaments, cups, etc.)
 4. Providing structured data in JSON format
 5. Ensuring accuracy and completeness of the extracted information
+
+IMPORTANT: For each competition, you MUST extract the URL that points to the competition's page. The URL is mandatory. If the URL is not directly visible, you must infer it from the context, links, or any available information. Do NOT omit the URL field. If you cannot find a URL, make a best effort to construct it based on the patterns used on the website, and clearly indicate it is inferred.
+
+IMPORTANT: Only include competitions that are associated with the specified nation: {nation}. Ignore and do not return competitions that do not match the given nation. The nation to match will be provided in the extraction context or prompt.
+
+Return ALL leagues, tournaments, and cups for the specified nation. Do not limit the results to a single competition.
 
 When analyzing content, look for:
 - League names and abbreviations
@@ -194,38 +200,66 @@ When analyzing content, look for:
 - Youth competitions
 - Women's competitions
 
-Return the results in a structured JSON format with the following structure:
-{
-    "competitions": [
-        {
-            "name": "Competition name",
-            "type": "league|tournament|cup|international|regional|youth|womens",
-            "country": "Country or region",
-            "season": "Season if mentioned",
-            "url": "URL if available",
-            "description": "Brief description if available"
-        }
-    ],
-    "summary": {
-        "total_competitions": 0,
-        "categories": {
-            "leagues": 0,
-            "tournaments": 0,
-            "cups": 0,
-            "international": 0,
-            "regional": 0,
-            "youth": 0,
-            "womens": 0
-        }
-    }
-}
+Return ONLY a valid JSON object as your output, with no extra text or explanation.
 
-If no competitions are found, return an empty competitions list with appropriate summary.
+Example output:
+{{
+  "competitions": [
+    {{
+      "name": "Competition name 1",
+      "type": "league|tournament|cup|international|regional|youth|womens",
+      "nation": "Nation or region",
+      "season": "Season if mentioned",
+      "url": "URL to the competition page (MANDATORY)",
+      "description": "Brief description if available"
+    }},
+    {{
+      "name": "Competition name 2",
+      "type": "league|tournament|cup|international|regional|youth|womens",
+      "nation": "Nation or region",
+      "season": "Season if mentioned",
+      "url": "URL to the competition page (MANDATORY)",
+      "description": "Brief description if available"
+    }}
+    // ... more competitions ...
+  ],
+  "summary": {{
+    "total_competitions": 0,
+    "categories": {{
+      "leagues": 0,
+      "tournaments": 0,
+      "cups": 0,
+      "international": 0,
+      "regional": 0,
+      "youth": 0,
+      "womens": 0
+    }}
+  }}
+}}
+
+If no competitions are found, return:
+{{
+  "competitions": [],
+  "summary": {{
+    "total_competitions": 0,
+    "categories": {{
+      "leagues": 0,
+      "tournaments": 0,
+      "cups": 0,
+      "international": 0,
+      "regional": 0,
+      "youth": 0,
+      "womens": 0
+    }}
+  }}
+}}
 """
 
-def create_competition_extraction_agent() -> ChatAgent:
-    """Create a CAMEL agent for extracting competition data from HTML content.
+def create_competition_extraction_agent(nation: str) -> ChatAgent:
+    """Create a CAMEL agent for extracting competition data from HTML content, with nation interpolation.
     
+    Args:
+        nation (str): The nation to extract competitions for.
     Returns:
         ChatAgent: The configured competition extraction agent
     """
@@ -233,14 +267,17 @@ def create_competition_extraction_agent() -> ChatAgent:
         # Create a model for the agent
         model = ModelFactory.create(
             model_platform=ModelPlatformType.GEMINI,
-            model_type="gemini-2.5-flash-lite-preview-06-17",
+            model_type="gemini-2.5-flash", #-lite-preview-06-17",
             model_config_dict={"temperature": 1/3},  # Low temperature for consistent extraction
         )
+        
+        # Interpolate the nation into the system prompt
+        system_prompt = COMPETITION_EXTRACTION_PROMPT.format(nation=nation)
         
         # Create the agent with the competition extraction system prompt
         agent = ChatAgent(
             model=model,
-            system_message=COMPETITION_EXTRACTION_PROMPT
+            system_message=system_prompt
         )
         
         logger.info("Competition extraction agent created successfully")
@@ -250,12 +287,13 @@ def create_competition_extraction_agent() -> ChatAgent:
         logger.error(f"Failed to create competition extraction agent: {str(e)}")
         raise e
 
-def extract_competitions_with_llm(markdown_content: str, site_name: str) -> Dict[str, Any]:
-    """Extract competition list from Markdown content using a CAMEL agent.
+def extract_competitions_with_llm(html_content: str, site_name: str, nation: Optional[str] = None) -> Dict[str, Any]:
+    """Extract competition list from HTML content using a CAMEL agent.
     
     Args:
-        markdown_content (str): The Markdown content to analyze
+        html_content (str): The HTML content to analyze
         site_name (str): The name of the site being analyzed
+        nation (Optional[str]): Nation to filter competitions by
         
     Returns:
         Dict[str, Any]: Extracted competition data in structured format
@@ -263,15 +301,15 @@ def extract_competitions_with_llm(markdown_content: str, site_name: str) -> Dict
     try:
         logger.info(f"Starting competition extraction for {site_name}")
         
-        # Create the competition extraction agent
-        agent = create_competition_extraction_agent()
+        # Create the competition extraction agent with nation interpolation
+        agent = create_competition_extraction_agent(nation or "(not specified)")
         
         # Prepare the analysis prompt
         analysis_prompt = f"""
-Please analyze the following Markdown content from {site_name} and extract all football competitions, tournaments, and leagues mentioned.
+Please analyze the following HTML content from {site_name} and extract all football competitions, tournaments, and leagues mentioned.
 
-Markdown Content:
-{markdown_content[:50000]}  # Limit content to avoid token limits
+HTML Content:
+{html_content[:50000]}  # Limit content to avoid token limits
 
 Please provide a comprehensive list of all competitions found, organized by type and category.
 """
@@ -485,12 +523,13 @@ def extract_html_from_url(url: str) -> str:
         logger.debug(traceback.format_exc())
         return f"Exception: {str(e)}"
 
-def save_html_to_file(html_content: str, site_name: str) -> str:
+def save_html_to_file(html_content: str, site_name: str, sub_url: Optional[str] = None) -> str:
     r"""Save HTML content to a file in the cache/<site>/ folder.
 
     Args:
         html_content (str): The HTML content to save.
         site_name (str): The name of the site for the filename.
+        sub_url (Optional[str]): The sub-URL or path for this extraction (for filename)
 
     Returns:
         str: The path to the saved file.
@@ -499,7 +538,11 @@ def save_html_to_file(html_content: str, site_name: str) -> str:
         # Create a safe filename
         safe_name = re.sub(r'[^\w\-_.]', '_', site_name)
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        filename = f"{safe_name}_{timestamp}.html"
+        if sub_url:
+            slug = sub_url.replace('/', '_').strip('_')
+            filename = f"{safe_name}_{slug}_{timestamp}.html"
+        else:
+            filename = f"{safe_name}_{timestamp}.html"
         file_path = get_cache_dir(site_name) / filename
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -539,13 +582,13 @@ def display_competitions(competition_data: Dict[str, Any], site_name: str) -> No
         print(f"\n\033[95m{comp_type.upper()} ({len(comps)}):\033[0m")
         for comp in comps:
             name = comp.get("name", "Unknown")
-            country = comp.get("country", "")
+            nation = comp.get("nation", "")
             season = comp.get("season", "")
             description = comp.get("description", "")
             
             print(f"  • {name}")
-            if country:
-                print(f"    Country: {country}")
+            if nation:
+                print(f"    Nation: {nation}")
             if season:
                 print(f"    Season: {season}")
             if description:
@@ -584,8 +627,25 @@ def save_competitions_cache(site_name: str, data: dict) -> bool:
         logger.error(f"Failed to cache competitions for {site_name}: {str(e)}")
         return False
 
-def extract_all_competitions(site_name: str, site_info: dict) -> dict:
-    """Extract competitions from all URLs in the site's competition list, merging results. If competitions.json exists, load and return its contents instead of fetching again."""
+def find_cached_files_by_regex(site_name: str, pattern: str) -> list:
+    """
+    Find cached files for a site whose filenames match a regex pattern.
+    Args:
+        site_name (str): The name of the site.
+        pattern (str): The regex pattern to match filenames.
+    Returns:
+        List[pathlib.Path]: List of matching cached file paths.
+    """
+    import re
+    cache_dir = get_cache_dir(site_name)
+    if not cache_dir.exists() or not cache_dir.is_dir():
+        return []
+    regex = re.compile(pattern)
+    return [f for f in cache_dir.iterdir() if f.is_file() and regex.search(f.name)]
+
+def extract_all_competitions(site_name: str, site_info: dict, nation: Optional[str] = None, sub_url: Optional[str] = None) -> dict:
+    """Extract competitions from all URLs in the site's competition list, merging results. If competitions.json exists, load and return its contents instead of fetching again.
+    If nation and sub_url are specified, only process and cache that sub_url."""
     import os
     cache_file = get_competitions_cache_file_path(site_name)
     if cache_file.exists():
@@ -596,6 +656,18 @@ def extract_all_competitions(site_name: str, site_info: dict) -> dict:
             logger.error(f"Failed to load competitions.json for {site_name}: {str(e)}. Refetching...")
     base_url = site_info["url"]
     comp_urls = site_info.get("competition", [base_url])
+    if nation and sub_url:
+        # If sub_url is a regex, match all comp_urls that match the pattern
+        try:
+            regex = re.compile(sub_url)
+            matched_urls = [u for u in comp_urls if regex.search(u)]
+            if not matched_urls:
+                logger.warning(f"No sub-URLs matched the regex: {sub_url}")
+            comp_urls = matched_urls
+        except re.error as e:
+            logger.error(f"Invalid regex for sub_url: {sub_url} ({e})")
+            comp_urls = []
+    teams_urls = site_info.get("teams", [base_url])  # Added support for 'teams' group
     all_competitions = []
     summary = {
         "total_competitions": 0,
@@ -617,16 +689,29 @@ def extract_all_competitions(site_name: str, site_info: dict) -> dict:
             url = urljoin(base_url, comp_url)
         else:
             url = comp_url
-        markdown_content = extract_html_from_url(url)
-        if markdown_content.startswith("Error:") or markdown_content.startswith("Exception:"):
-            errors.append(f"{url}: {markdown_content}")
+        # Try to find a cached HTML file for this sub-URL
+        slug = comp_url.replace('/', '_').strip('_')
+        pattern = rf"{re.escape(slug)}.*\.html$"
+        cached_files = find_cached_files_by_regex(site_name, pattern)
+        if cached_files:
+            # Use the most recent cached file (by modification time)
+            cached_file = max(cached_files, key=lambda f: f.stat().st_mtime)
+            with open(cached_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            logger.info(f"Loaded HTML from cache: {cached_file}")
+        else:
+            html_content = extract_html_from_url(url)
+            # Save HTML for each sub-url
+            save_html_to_file(html_content, site_name, sub_url=comp_url)
+        if html_content.startswith("Error:") or html_content.startswith("Exception:"):
+            errors.append(f"{url}: {html_content}")
             continue
-        comp_data = extract_competitions_with_llm(markdown_content, site_name)
+        comp_data = extract_competitions_with_llm(html_content, site_name, nation=nation)
         # Save each sub-url's competitions file
         save_competitions_to_file(comp_data, site_name, sub_url=comp_url)
         comps = comp_data.get("competitions", [])
         for c in comps:
-            key = (c.get("name"), c.get("type"), c.get("country"), c.get("season"))
+            key = (c.get("name"), c.get("type"), c.get("nation"), c.get("season"))
             if key not in seen:
                 all_competitions.append(c)
                 seen.add(key)
@@ -641,9 +726,10 @@ def extract_all_competitions(site_name: str, site_info: dict) -> dict:
     }
     if errors:
         result["errors"] = errors
+    # teams_urls is now available for future use
     return result
 
-def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict = {"default": 1}, extract_competitions: bool = False) -> bool:
+def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict = {"default": 1}, extract_competitions: bool = False, nation: Optional[str] = None, sub_url: Optional[str] = None) -> bool:
     """Scrape a specific site.
     
     Args:
@@ -652,6 +738,8 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
         description (str): Description of the site.
         cache_days_obj (dict): Number of days to cache content (0 = no caching).
         extract_competitions (bool): Whether to extract competitions using LLM.
+        nation (Optional[str]): Nation to filter competitions by.
+        sub_url (Optional[str]): Sub-URL path to scrape (required with --nation)
         
     Returns:
         bool: True if successful, False otherwise.
@@ -698,7 +786,7 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
                     except Exception as e:
                         logger.error(f"Failed to load competitions.json for {site_name}: {str(e)}. Refetching...")
                 print(f"\033[94mExtracting competitions from cached content...\033[0m")
-                competition_data = extract_all_competitions(site_name, SITE_URLS[site_name])
+                competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], nation=nation, sub_url=sub_url)
                 if "error" in competition_data:
                     print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
                 else:
@@ -758,7 +846,7 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
             # Extract competitions if requested
             if extract_competitions:
                 print(f"\033[94mExtracting competitions from {site_name}...\033[0m")
-                competition_data = extract_all_competitions(site_name, SITE_URLS[site_name])
+                competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], nation=nation, sub_url=sub_url)
                 if "error" in competition_data:
                     print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
                 else:
@@ -874,6 +962,20 @@ Examples:
         help="Enable logging to file (web_scraper.log)"
     )
     
+    parser.add_argument(
+        "--nation",
+        type=str,
+        default=None,
+        help="Nation to filter competitions by (required with --extract-competitions)"
+    )
+    
+    parser.add_argument(
+        "--sub-url",
+        type=str,
+        default=None,
+        help="Sub-URL path to scrape (required with --nation)"
+    )
+    
     args = parser.parse_args()
     
     # Set up logging based on arguments
@@ -927,6 +1029,15 @@ Examples:
         print("\n\033[93mNo site specified. Use --list to see available sites or --site <name> to scrape.\033[0m")
         return
     
+    # If --extract-competitions is used, --nation must be provided
+    if args.extract_competitions and not args.nation:
+        print("\033[91mError: --nation is required when using --extract-competitions.\033[0m")
+        sys.exit(1)
+    # If --nation is provided, --sub-url must also be provided
+    if args.nation and not args.sub_url:
+        print("\033[91mError: --sub-url is required when using --nation.\033[0m")
+        sys.exit(1)
+    
     # Handle scraping all sites
     if args.site.lower() == "all":
         print(f"\033[94mScraping all {len(SITE_URLS)} available sites...\033[0m")
@@ -944,7 +1055,7 @@ Examples:
             if args.cache_days is not None:
                 cache_days_obj["default"] = args.cache_days
                 cache_days_obj["competition"] = args.cache_days
-            success = scrape_site(site_name, info["url"], info["description"], cache_days_obj, args.extract_competitions)
+            success = scrape_site(site_name, info["url"], info["description"], cache_days_obj, args.extract_competitions, nation=args.nation, sub_url=args.sub_url)
             if success:
                 successful_scrapes += 1
             print(f"\033[94m{'='*50}\033[0m")
@@ -964,7 +1075,7 @@ Examples:
             print(f"\033[94mCache override: Disabled\033[0m")
         else:
             print(f"\033[94mCache override: {args.cache_days} day{'s' if args.cache_days != 1 else ''}\033[0m")
-    success = scrape_site(args.site, url, description, cache_days_obj, args.extract_competitions)
+    success = scrape_site(args.site, url, description, cache_days_obj, args.extract_competitions, nation=args.nation, sub_url=args.sub_url)
     if success:
         print(f"\n\033[92m✓ Scraping completed successfully!\033[0m")
     else:
