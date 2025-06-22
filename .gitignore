@@ -178,3 +178,10 @@ ehthumbs.db
 Thumbs.db
 
 data/*
+
+# Ignore cached HTML files
+cache/**/*.html
+
+uv.lock
+
+tmp/

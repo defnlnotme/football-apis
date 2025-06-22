@@ -11,7 +11,7 @@ authors = [
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -24,6 +24,9 @@ dependencies = [
     "pandas>=1.2.0",
     "beautifulsoup4>=4.9.0",
     "lxml>=4.6.0",
+    "camel-ai[owl]",
+    "crawl4ai>=0.4.24",
+    "owl",
 ]
 
 [project.urls]
@@ -38,3 +41,6 @@ include = ["football_apis*"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --cov=football_apis --cov-report=term-missing"
+
+[tool.uv.sources]
+owl = { git = "https://github.com/camel-ai/owl" }

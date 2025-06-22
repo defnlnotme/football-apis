@@ -129,6 +129,215 @@ client = FootballDataClient(api_key="...", cache_enabled=True, cache_ttl=3600)  
   logging.basicConfig(level=logging.INFO)
   ```
 
+## Command Line Interface
+
+The package includes a comprehensive CLI tool (`client.py`) for fetching data from all endpoints:
+
+```bash
+# List available parameters for betting odds
+python client.py the-odds-api --list-params
+
+# Fetch data from all endpoints
+python client.py all
+
+# Fetch only betting odds and team ratings
+python client.py the-odds-api clubelo
+
+# Get help for a specific endpoint
+python client.py the-odds-api --info
+
+# Get betting odds with specific parameters
+python client.py the-odds-api --sport soccer_epl --region eu --odds-format decimal
+
+# Get team ratings for a specific team
+python client.py clubelo --team Barcelona --date 2024-01-01
+
+# Get performance stats for a team in a specific season
+python client.py football-data --team-id 81 --season 2023 --competition-id 2021
+```
+
+For more examples and detailed usage, run:
+```bash
+python client.py --help
+```
+
+---
+
+## Web Scraping with LLM Data Extraction
+
+In addition to the API clients, this package includes a powerful web scraping tool (`scrape.py`) that can extract HTML content from football websites and use CAMEL agents to intelligently identify and extract structured data.
+
+### Scraping Features
+
+- **Multi-site scraping**: Scrape from 8 popular football websites
+- **LLM-powered data extraction**: Use CAMEL agents to extract structured data from scraped content
+- **Flexible site selection**: Choose individual sites or scrape all at once
+- **Robust error handling**: Retry logic and rate limit handling
+- **Structured output**: Save both HTML and JSON extracted data
+- **Beautiful console output**: Colored and formatted results
+- **Extensible architecture**: Easy to add new sites and extraction types
+
+### Available Sites
+
+- **worldfootball**: World Football - Football statistics and information
+- **transfermarkt**: Transfermarkt - Football transfer market and player statistics
+- **espn**: ESPN Soccer - Latest football news and scores
+- **bbc_sport**: BBC Sport Football - UK football news and live scores
+- **goal**: Goal.com - International football news and live scores
+- **skysports**: Sky Sports Football - Premier League and football coverage
+- **fifa**: FIFA - Official website of international football
+- **uefa**: UEFA - European football governing body
+
+### Scraping Usage
+
+#### Basic Scraping
+
+List all available sites:
+```bash
+python scrape.py --list
+```
+
+Scrape a single site:
+```bash
+python scrape.py --site worldfootball
+```
+
+Scrape all sites:
+```bash
+python scrape.py --site all
+```
+
+#### Data Extraction
+
+Scrape and extract data from a single site:
+```bash
+python scrape.py --site worldfootball --extract-competitions
+```
+
+Scrape and extract data from all sites:
+```bash
+python scrape.py --site all --extract-competitions
+```
+
+### Scraping Output Files
+
+#### HTML Files
+- Format: `{site_name}_{timestamp}.html`
+- Contains the full HTML content of the scraped page
+
+#### Extracted Data Files
+- Format: `{site_name}_competitions_{timestamp}.json`
+- Contains structured data extracted by the LLM
+
+#### Example Data Structure
+
+```json
+{
+  "competitions": [
+    {
+      "name": "Premier League",
+      "type": "league",
+      "country": "England",
+      "season": "2023/24",
+      "url": "https://example.com/premier-league",
+      "description": "Top tier English football league"
+    }
+  ],
+  "summary": {
+    "total_competitions": 15,
+    "categories": {
+      "leagues": 8,
+      "tournaments": 3,
+      "cups": 2,
+      "international": 1,
+      "regional": 1,
+      "youth": 0,
+      "womens": 0
+    }
+  }
+}
+```
+
+### Data Extraction Types
+
+The current implementation includes:
+- **Competition extraction**: Identifies and categorizes football competitions, tournaments, and leagues
+- **Categorization**: Automatically categorizes data into relevant types (leagues, tournaments, cups, etc.)
+
+The system is designed to be easily extensible for other types of data extraction such as:
+- Player information and statistics
+- Team details and rankings
+- Match schedules and results
+- News and articles
+- Transfer information
+- Historical data
+
+### Scraping Requirements
+
+- Python 3.8+
+- CAMEL-AI framework
+- Gemini API key (set in `.envrc`):
+  ```
+  GEMINI_API_KEY=your_gemini_api_key_here
+  ```
+
+### Scraping Example Output
+
+```
+Scraping: worldfootball
+Description: World Football - Football statistics and information
+URL: https://www.worldfootball.net/
+Data extraction: Enabled
+
+✓ HTML extracted and saved to: worldfootball_20241201_143022.html
+✓ Content length: 45678 characters
+
+Extracting data from worldfootball...
+✓ Data extracted and saved to: worldfootball_competitions_20241201_143022.json
+✓ Found 25 competitions
+
+Data categories:
+  - leagues: 12
+  - tournaments: 8
+  - cups: 3
+  - international: 2
+
+=== Data Found on worldfootball ===
+Total: 25
+
+LEAGUES (12):
+  • Premier League
+    Country: England
+    Season: 2023/24
+    Description: Top tier English football league
+
+  • La Liga
+    Country: Spain
+    Season: 2023/24
+    Description: Spanish top division
+
+TOURNAMENTS (8):
+  • UEFA Champions League
+    Country: Europe
+    Season: 2023/24
+    Description: European club championship
+```
+
+### Extending the Scraper
+
+The scraping system is designed to be easily extensible:
+
+1. **Add new sites**: Update the `SITE_URLS` dictionary in `scrape.py`
+2. **Add new extraction types**: Create new CAMEL agents with specialized prompts
+3. **Customize data structures**: Modify the JSON output format for different data types
+4. **Add new analysis**: Implement additional processing for extracted data
+
+The modular architecture allows you to:
+- Add new football websites to the scraping list
+- Create specialized LLM agents for different types of data extraction
+- Customize the output format for different use cases
+- Integrate with other data processing pipelines
+
 ## Contributing
 
 Pull requests and issues are welcome! Please add tests for new features.

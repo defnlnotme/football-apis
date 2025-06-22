@@ -1,0 +1,5472 @@
+{
+  "competitions": [
+    {
+      "name": "World Cup",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers Europe",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-europa/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers South America",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-suedamerika/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers Asia",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-asien/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers CONCACAF",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-concacaf/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers Africa",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-afrika/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers Oceania",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-ozeanien/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers Play-offs",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-play-offs/",
+      "description": null
+    },
+    {
+      "name": "Friendlies",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Intercontinental Cup",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/intercontinental-cup/",
+      "description": null
+    },
+    {
+      "name": "Olympic Games",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/olympische-spiele/",
+      "description": null
+    },
+    {
+      "name": "Preolímpico Sudamericano",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/preolimpico-sudamericano/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF CONCACAF",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/olympia-qf-concacaf/",
+      "description": null
+    },
+    {
+      "name": "Olympics QF Playoff",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/olympia-qf-playoff/",
+      "description": null
+    },
+    {
+      "name": "Friendlies Clubs",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/freundschaft-vereine/",
+      "description": null
+    },
+    {
+      "name": "Cup of Champions",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cup-of-champions/",
+      "description": null
+    },
+    {
+      "name": "Club World Cup",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/klub-wm/",
+      "description": null
+    },
+    {
+      "name": "UEFA-CONMEBOL Club Challenge",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/uefa-conmebol-club-challenge/",
+      "description": null
+    },
+    {
+      "name": "Arab Club Champions Cup",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/arab-club-champions-cup_2/",
+      "description": null
+    },
+    {
+      "name": "Arab Cup",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/arab-cup/",
+      "description": null
+    },
+    {
+      "name": "Confederations Cup",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/confederations-cup/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers AFC/OFC",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-afc-ofc/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers AFC/CAF/OFC",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/wm-quali-afc-caf-ofc/",
+      "description": null
+    },
+    {
+      "name": "CONCACAF Confed Cup Playoff",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/concacaf-confed-cup-playoff/",
+      "description": null
+    },
+    {
+      "name": "J.League Cup / Copa Sudamericana Championship",
+      "type": "international",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/j-league-cup-copa-sudamericana-championship/",
+      "description": null
+    },
+    {
+      "name": "World Cup [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-wm/",
+      "description": null
+    },
+    {
+      "name": "World Cup Qualifiers Europe [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-wm-quali-europa/",
+      "description": null
+    },
+    {
+      "name": "World Cup Qualifiers Relegation [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-wm-qualifikation-playoff/",
+      "description": null
+    },
+    {
+      "name": "Women's Finalissima [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-womens-finalissima/",
+      "description": null
+    },
+    {
+      "name": "Olympic Games [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-olympische-spiele/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF Europe [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-olympia-qf-europa/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF CONCACAF [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/_81/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF Africa [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/_80/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF Asia [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/_82/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF Oceania [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/_83/",
+      "description": null
+    },
+    {
+      "name": "Olympic QF Playoff [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/_472/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "World Cup Qualifiers Asia [Women]",
+      "type": "womens",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-wm-qualifikation-asien/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U21]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u21-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "World Cup [U20]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-h-wm/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U20]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u-20-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Intercontinental Cup [U20]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-h-intercontinental-cup/",
+      "description": null
+    },
+    {
+      "name": "World Cup [U20 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-d-wm/",
+      "description": null
+    },
+    {
+      "name": "WM Qualifikation Playoffs [U20 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-d-wm-qualifikation-playoffs/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U20 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U19]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Freundschaft [U19 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "World Cup [U19 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-d-wm/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U18]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u18-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Generation Adidas Cup [U18]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u18-h-generation-adidas-cup/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U18 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u18-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "World Cup [U17]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-wm/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U17]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "WC Qualifiers CONCACAF [U17]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-wm-quali-concacaf/",
+      "description": null
+    },
+    {
+      "name": "Generation Adidas Cup [U17]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-generation-adidas-cup/",
+      "description": null
+    },
+    {
+      "name": "World Cup [U17 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-d-wm/",
+      "description": null
+    },
+    {
+      "name": "Freundschaft [U17 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U16]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "World Cup [U16]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-h-wm/",
+      "description": null
+    },
+    {
+      "name": "Generation Adidas Cup [U16]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-h-generation-adidas-cup/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U16 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U15]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u15-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U15 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u15-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Pan American Games [U23]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u23-h-panamerikanische-spiele/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U23]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u23-h-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "Friendlies [U23 Women]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u23-d-freundschaft/",
+      "description": null
+    },
+    {
+      "name": "EURO",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/em/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "Champions League",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/champions-league/",
+      "description": null
+    },
+    {
+      "name": "Champions League Qual.",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/champions-league-qual/",
+      "description": null
+    },
+    {
+      "name": "Europa League",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/europa-league/",
+      "description": null
+    },
+    {
+      "name": "Europa League Qual.",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/europa-league-qual/",
+      "description": null
+    },
+    {
+      "name": "Conference League",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/conference-league/",
+      "description": null
+    },
+    {
+      "name": "Conference League Qual.",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/conference-league-qual/",
+      "description": null
+    },
+    {
+      "name": "Nations League A",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nations-league-a/",
+      "description": null
+    },
+    {
+      "name": "Nations League B",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nations-league-b/",
+      "description": null
+    },
+    {
+      "name": "Nations League C",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nations-league-c/",
+      "description": null
+    },
+    {
+      "name": "Nations League D",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nations-league-d/",
+      "description": null
+    },
+    {
+      "name": "Relegation Nations League",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/relegation-nations-league/",
+      "description": null
+    },
+    {
+      "name": "UEFA Super Cup",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/uefa-super-cup/",
+      "description": null
+    },
+    {
+      "name": "Czechoslovak Supercup",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cesko-slovensky-superpohar/",
+      "description": null
+    },
+    {
+      "name": "Premier League International Cup",
+      "type": "international",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/premier-league-international-cup/",
+      "description": null
+    },
+    {
+      "name": "Cup Winners Cup",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/ec-der-pokalsieger/",
+      "description": null
+    },
+    {
+      "name": "Cup Winners Cup Qualifiers",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/ec-pokalsieger-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "UI-Cup",
+      "type": "international",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/ui-cup/",
+      "description": null
+    },
+    {
+      "name": "Royal League",
+      "type": "international",
+      "country": "Scandinavia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/royal-league/",
+      "description": null
+    },
+    {
+      "name": "Baltic League",
+      "type": "regional",
+      "country": "Baltic States",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/baltic-league/",
+      "description": null
+    },
+    {
+      "name": "EURO [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-em/",
+      "description": null
+    },
+    {
+      "name": "EM-Quali Liga A [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-em-quali-liga-a/",
+      "description": null
+    },
+    {
+      "name": "EM-Quali Liga B [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-em-quali-liga-b/",
+      "description": null
+    },
+    {
+      "name": "EM-Quali Liga C [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-em-quali-liga-c/",
+      "description": null
+    },
+    {
+      "name": "EM-Quali Playoffs [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-em-quali-playoffs/",
+      "description": null
+    },
+    {
+      "name": "Nations League A [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-nations-league-a/",
+      "description": null
+    },
+    {
+      "name": "Nations League B [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-nations-league-b/",
+      "description": null
+    },
+    {
+      "name": "Nations League C [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-nations-league-c/",
+      "description": null
+    },
+    {
+      "name": "Relegation Nations League [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-relegation-nations-league/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "Champions League [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-champions-league/",
+      "description": null
+    },
+    {
+      "name": "Champions League Qual. [Women]",
+      "type": "womens",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-champions-league-qual/",
+      "description": null
+    },
+    {
+      "name": "EURO [U19 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-d-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League A [U19 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-d-em-quali-liga-a/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League B [U19 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-d-em-quali-liga-b/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U19 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-d-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "EURO [U17 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-d-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League A [U17 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-d-em-quali-liga-a/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League B [U17 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-d-em-quali-liga-b/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U17 Women]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-d-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "EURO [U21]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u21-h-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U21]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u21-h-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "EURO [U19]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U19]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League A [U19]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-em-quali-liga-a/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League B [U19]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-em-quali-liga-b/",
+      "description": null
+    },
+    {
+      "name": "EURO Quali. League C [U19]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-em-quali-liga-c/",
+      "description": null
+    },
+    {
+      "name": "EURO [U18]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u18-h-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U18]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u18-h-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "EURO [U17]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U17]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "EURO [U16]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-h-em/",
+      "description": null
+    },
+    {
+      "name": "EURO Qualifiers [U16]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-h-em-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "Youth League [Youth]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/a-junioren-youth-league/",
+      "description": null
+    },
+    {
+      "name": "NextGen Series [Youth]",
+      "type": "youth",
+      "country": "Europe",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/a-junioren-nextgen-series/",
+      "description": null
+    },
+    {
+      "name": "Kategoria Superiore",
+      "type": "league",
+      "country": "Albania",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/alb-kategoria-superiore/",
+      "description": null
+    },
+    {
+      "name": "Kupa",
+      "type": "cup",
+      "country": "Albania",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/alb-kupa/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Albania",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/alb-relegation/",
+      "description": null
+    },
+    {
+      "name": "Supercup",
+      "type": "cup",
+      "country": "Albania",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/alb-supercup/",
+      "description": null
+    },
+    {
+      "name": "1a Divisió",
+      "type": "league",
+      "country": "Andorra",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/and-1a-divisio/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Andorra",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/and-relegation/",
+      "description": null
+    },
+    {
+      "name": "Supercopa",
+      "type": "cup",
+      "country": "Andorra",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/and-supercopa/",
+      "description": null
+    },
+    {
+      "name": "Premier League",
+      "type": "league",
+      "country": "Armenia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/arm-premier-league/",
+      "description": null
+    },
+    {
+      "name": "Cup",
+      "type": "cup",
+      "country": "Armenia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/arm-cup/",
+      "description": null
+    },
+    {
+      "name": "Super Cup",
+      "type": "cup",
+      "country": "Armenia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/arm-super-cup/",
+      "description": null
+    },
+    {
+      "name": "Bundesliga",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "2. Liga",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-2-liga/",
+      "description": null
+    },
+    {
+      "name": "ÖFB-Cup",
+      "type": "cup",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-oefb-cup/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Ost",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-regionalliga-ost/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Mitte",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-regionalliga-mitte/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga West",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-regionalliga-west/",
+      "description": null
+    },
+    {
+      "name": "Relegation Bundesliga",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-relegation-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Salzburg",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-regionalliga-salzburg/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Tirol",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-regionalliga-tirol/",
+      "description": null
+    },
+    {
+      "name": "Eliteliga Vorarlberg",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-eliteliga-vorarlberg/",
+      "description": null
+    },
+    {
+      "name": "Relegation Erste Liga",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-aufstieg-erste-liga/",
+      "description": null
+    },
+    {
+      "name": "Supercup",
+      "type": "cup",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-supercup/",
+      "description": null
+    },
+    {
+      "name": "Nationalliga",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-nationalliga/",
+      "description": null
+    },
+    {
+      "name": "Staatsliga",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-staatsliga/",
+      "description": null
+    },
+    {
+      "name": "Wiener Liga (1945-1949)",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-wiener-liga-1945-1949/",
+      "description": null
+    },
+    {
+      "name": "Gauliga (1938-1945)",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-gauliga-1938-1945/",
+      "description": null
+    },
+    {
+      "name": "Nationalliga (1937/38)",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-nationalliga-1937-38/",
+      "description": null
+    },
+    {
+      "name": "Wiener Liga 1. Klasse (1923-1937)",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-wiener-liga-1-klasse-1923-1937/",
+      "description": null
+    },
+    {
+      "name": "1. Klasse NÖFV (1911-1923)",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-1-klasse-noefv-1911-1923/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga West (-2019)",
+      "type": "league",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-regionalliga-west-2019/",
+      "description": null
+    },
+    {
+      "name": "Bundesliga [Women]",
+      "type": "womens",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-frauen-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "Relegation [Women]",
+      "type": "womens",
+      "country": "Austria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aut-frauen-relegation/",
+      "description": null
+    },
+    {
+      "name": "Premyer Liqası",
+      "type": "league",
+      "country": "Azerbaijan",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aze-premyer-liqasi/",
+      "description": null
+    },
+    {
+      "name": "I Liqa",
+      "type": "league",
+      "country": "Azerbaijan",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aze-i-liqa/",
+      "description": null
+    },
+    {
+      "name": "Kubok",
+      "type": "cup",
+      "country": "Azerbaijan",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aze-kubok/",
+      "description": null
+    },
+    {
+      "name": "Supercup",
+      "type": "cup",
+      "country": "Azerbaijan",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aze-supercup/",
+      "description": null
+    },
+    {
+      "name": "Cempionat",
+      "type": "league",
+      "country": "Belarus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/blr-cempionat/",
+      "description": null
+    },
+    {
+      "name": "Kubok",
+      "type": "cup",
+      "country": "Belarus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/blr-kubok/",
+      "description": null
+    },
+    {
+      "name": "Superkubok",
+      "type": "cup",
+      "country": "Belarus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/blr-superkubok/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Belarus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/blr-relegation/",
+      "description": null
+    },
+    {
+      "name": "Pro League",
+      "type": "league",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-pro-league/",
+      "description": null
+    },
+    {
+      "name": "Challenger Pro League",
+      "type": "league",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-challenger-pro-league/",
+      "description": null
+    },
+    {
+      "name": "Beker van België",
+      "type": "cup",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-beker-van-belgie/",
+      "description": null
+    },
+    {
+      "name": "Relegation I/II",
+      "type": "league",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-relegation-i-ii/",
+      "description": null
+    },
+    {
+      "name": "Supercup",
+      "type": "cup",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-supercup/",
+      "description": null
+    },
+    {
+      "name": "Reserve Pro League",
+      "type": "league",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-reserve-pro-league/",
+      "description": null
+    },
+    {
+      "name": "Europa League Playoffs",
+      "type": "league",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-europa-league-playoffs/",
+      "description": null
+    },
+    {
+      "name": "Tour Final Div. 2",
+      "type": "league",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-tour-final-div-2/",
+      "description": null
+    },
+    {
+      "name": "Elite [U18]",
+      "type": "youth",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-u18-h-elite/",
+      "description": null
+    },
+    {
+      "name": "Elite [U16]",
+      "type": "youth",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-u16-h-elite/",
+      "description": null
+    },
+    {
+      "name": "Elite U19 [Youth]",
+      "type": "youth",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-a-junioren-elite-u19/",
+      "description": null
+    },
+    {
+      "name": "Elite U17 [Youth B]",
+      "type": "youth",
+      "country": "Belgium",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bel-b-junioren-elite-u17/",
+      "description": null
+    },
+    {
+      "name": "Premier Liga",
+      "type": "league",
+      "country": "Bosnia-Herzegovina",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bih-premier-liga/",
+      "description": null
+    },
+    {
+      "name": "Kup BiH",
+      "type": "cup",
+      "country": "Bosnia-Herzegovina",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bih-kup-bih/",
+      "description": null
+    },
+    {
+      "name": "Super Kup",
+      "type": "cup",
+      "country": "Bosnia-Herzegovina",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bih-super-kup/",
+      "description": null
+    },
+    {
+      "name": "Parva Liga",
+      "type": "league",
+      "country": "Bulgaria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bul-parva-liga/",
+      "description": null
+    },
+    {
+      "name": "Kupa",
+      "type": "cup",
+      "country": "Bulgaria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bul-kupa/",
+      "description": null
+    },
+    {
+      "name": "Supercup",
+      "type": "cup",
+      "country": "Bulgaria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bul-supercup/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Bulgaria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bul-relegation/",
+      "description": null
+    },
+    {
+      "name": "1. HNL",
+      "type": "league",
+      "country": "Croatia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cro-1-hnl/",
+      "description": null
+    },
+    {
+      "name": "2. HNL",
+      "type": "league",
+      "country": "Croatia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cro-2-hnl/",
+      "description": null
+    },
+    {
+      "name": "Nogometni Kup",
+      "type": "cup",
+      "country": "Croatia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cro-nogometni-kup/",
+      "description": null
+    },
+    {
+      "name": "Superkup",
+      "type": "cup",
+      "country": "Croatia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cro-superkup/",
+      "description": null
+    },
+    {
+      "name": "Relegation 1/2",
+      "type": "league",
+      "country": "Croatia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cro-relegation-1-2/",
+      "description": null
+    },
+    {
+      "name": "Relegation 2/3",
+      "type": "league",
+      "country": "Croatia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cro-relegation-2-3/",
+      "description": null
+    },
+    {
+      "name": "1. československá fotbalová liga",
+      "type": "league",
+      "country": "CSSR",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/csr-1-ceskoslovenska-fotbalova-liga/",
+      "description": null
+    },
+    {
+      "name": "First Division",
+      "type": "league",
+      "country": "Cyprus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cyp-first-division/",
+      "description": null
+    },
+    {
+      "name": "Kypello Kyprou",
+      "type": "cup",
+      "country": "Cyprus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cyp-kypello-kyprou/",
+      "description": null
+    },
+    {
+      "name": "Super Cup",
+      "type": "cup",
+      "country": "Cyprus",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cyp-super-cup/",
+      "description": null
+    },
+    {
+      "name": "1. fotbalová liga",
+      "type": "league",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-1-fotbalova-liga/",
+      "description": null
+    },
+    {
+      "name": "2. fotbalová liga",
+      "type": "league",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-2-fotbalova-liga/",
+      "description": null
+    },
+    {
+      "name": "3. fotbalová Liga",
+      "type": "league",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-3-fotbalova-liga/",
+      "description": null
+    },
+    {
+      "name": "Pohár FAČR",
+      "type": "cup",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-pohar-facr/",
+      "description": null
+    },
+    {
+      "name": "Playoffs 1/2",
+      "type": "league",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-playoffs-1-2/",
+      "description": null
+    },
+    {
+      "name": "Superpohár",
+      "type": "cup",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-superpohar/",
+      "description": null
+    },
+    {
+      "name": "1. liga žen [Women]",
+      "type": "womens",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-frauen-1-liga-zen/",
+      "description": null
+    },
+    {
+      "name": "2. liga žen [Women]",
+      "type": "womens",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-frauen-2-liga-zen/",
+      "description": null
+    },
+    {
+      "name": "I. CLD [Youth]",
+      "type": "youth",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-a-junioren-i-cld/",
+      "description": null
+    },
+    {
+      "name": "I. CLD [Youth B]",
+      "type": "youth",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-b-junioren-i-cld/",
+      "description": null
+    },
+    {
+      "name": "ČLŽ [Youth C]",
+      "type": "youth",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-c-junioren-clz/",
+      "description": null
+    },
+    {
+      "name": "ČLŽ (U14) [Youth C]",
+      "type": "youth",
+      "country": "Czech Republic",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cze-c-junioren-clz-u14/",
+      "description": null
+    },
+    {
+      "name": "Superliga",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-superliga/",
+      "description": null
+    },
+    {
+      "name": "1. Division",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-1-division/",
+      "description": null
+    },
+    {
+      "name": "2. Division",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-2-division/",
+      "description": null
+    },
+    {
+      "name": "DBU Pokalen",
+      "type": "cup",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-dbu-pokalen/",
+      "description": null
+    },
+    {
+      "name": "Future Cup",
+      "type": "cup",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-future-cup/",
+      "description": null
+    },
+    {
+      "name": "Relegation Superliga",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-relegation-superliga/",
+      "description": null
+    },
+    {
+      "name": "2. Division Promotion",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-2-division-aufstieg/",
+      "description": null
+    },
+    {
+      "name": "2. Division Relegation",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-2-division-abstieg/",
+      "description": null
+    },
+    {
+      "name": "2. Division Pulje 1 (2015-2021)",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-2-division-pulje-1-2015-2021/",
+      "description": null
+    },
+    {
+      "name": "2. Division Pulje 2 (2015-2021)",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-2-division-pulje-2-2015-2021/",
+      "description": null
+    },
+    {
+      "name": "2. Division Pulje 3",
+      "type": "league",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-2-division-pulje-3/",
+      "description": null
+    },
+    {
+      "name": "Elitedivisionen [Women]",
+      "type": "womens",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-frauen-elitedivisionen/",
+      "description": null
+    },
+    {
+      "name": "Kvalifikation Elitedivisionen [Women]",
+      "type": "womens",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-frauen-kvalifikation-elitedivisionen/",
+      "description": null
+    },
+    {
+      "name": "U19 Drenge Ligaen [Youth]",
+      "type": "youth",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-a-junioren-u19-drenge-ligaen/",
+      "description": null
+    },
+    {
+      "name": "U19 Drenge Divisionen [Youth]",
+      "type": "youth",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-a-junioren-u19-drenge-divisionen/",
+      "description": null
+    },
+    {
+      "name": "U17 Drenge Ligaen [Youth B]",
+      "type": "youth",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-b-junioren-u17-drenge-ligaen/",
+      "description": null
+    },
+    {
+      "name": "U17 Drenge Divisionen [Youth B]",
+      "type": "youth",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-b-junioren-u17-drenge-divisionen/",
+      "description": null
+    },
+    {
+      "name": "U15 Drenge Ligaen [Youth C]",
+      "type": "youth",
+      "country": "Denmark",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/den-c-junioren-u15-drenge-ligaen/",
+      "description": null
+    },
+    {
+      "name": "Premier League",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-premier-league/",
+      "description": null
+    },
+    {
+      "name": "Championship",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-championship/",
+      "description": null
+    },
+    {
+      "name": "FA Cup",
+      "type": "cup",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-fa-cup/",
+      "description": null
+    },
+    {
+      "name": "League Cup",
+      "type": "cup",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-league-cup/",
+      "description": null
+    },
+    {
+      "name": "League One",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-league-one/",
+      "description": null
+    },
+    {
+      "name": "League Two",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-league-two/",
+      "description": null
+    },
+    {
+      "name": "National League",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-national-league/",
+      "description": null
+    },
+    {
+      "name": "National League North",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-national-league-north/",
+      "description": null
+    },
+    {
+      "name": "National League South",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-national-league-south/",
+      "description": null
+    },
+    {
+      "name": "FA Community Shield",
+      "type": "cup",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-fa-community-shield/",
+      "description": null
+    },
+    {
+      "name": "EFL Trophy",
+      "type": "cup",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-efl-trophy/",
+      "description": null
+    },
+    {
+      "name": "Playoffs",
+      "type": "league",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-playoffs/",
+      "description": null
+    },
+    {
+      "name": "Premier League 2",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-premier-league-2_2/",
+      "description": null
+    },
+    {
+      "name": "Professional Development League",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-professional-development-league/",
+      "description": null
+    },
+    {
+      "name": "Premier League 2 Div. 2",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-premier-league-2-div-2/",
+      "description": null
+    },
+    {
+      "name": "Women's Super League [Women]",
+      "type": "womens",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-frauen-womens-super-league/",
+      "description": null
+    },
+    {
+      "name": "FA Women's Cup [Women]",
+      "type": "womens",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-frauen-fa-womens-cup/",
+      "description": null
+    },
+    {
+      "name": "Premier League [U18]",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-u18-h-premier-league/",
+      "description": null
+    },
+    {
+      "name": "Premier League Cup [U18]",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-u18-h-premier-league-cup/",
+      "description": null
+    },
+    {
+      "name": "FA Youth Cup [U18]",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-u18-h-fa-youth-cup/",
+      "description": null
+    },
+    {
+      "name": "Professional Development League [U18]",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-u18-h-professional-development-league/",
+      "description": null
+    },
+    {
+      "name": "Youth Alliance [U18]",
+      "type": "youth",
+      "country": "England",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/eng-u18-h-youth-alliance/",
+      "description": null
+    },
+    {
+      "name": "Meistriliiga",
+      "type": "league",
+      "country": "Estonia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/est-meistriliiga/",
+      "description": null
+    },
+    {
+      "name": "Eesti Karikas",
+      "type": "cup",
+      "country": "Estonia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/est-eesti-karikas/",
+      "description": null
+    },
+    {
+      "name": "Superkarikas",
+      "type": "cup",
+      "country": "Estonia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/est-superkarikas/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Estonia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/est-relegation/",
+      "description": null
+    },
+    {
+      "name": "Effodeildin",
+      "type": "league",
+      "country": "Faroe Islands",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fro-effodeildin/",
+      "description": null
+    },
+    {
+      "name": "Steypakappingin",
+      "type": "cup",
+      "country": "Faroe Islands",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fro-steypakappingin/",
+      "description": null
+    },
+    {
+      "name": "Stórsteypadystur",
+      "type": "cup",
+      "country": "Faroe Islands",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fro-storsteypadystur/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Faroe Islands",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fro-relegation/",
+      "description": null
+    },
+    {
+      "name": "Veikkausliiga",
+      "type": "league",
+      "country": "Finland",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fin-veikkausliiga/",
+      "description": null
+    },
+    {
+      "name": "Ykkösliigaa",
+      "type": "league",
+      "country": "Finland",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fin-ykkoesliigaa/",
+      "description": null
+    },
+    {
+      "name": "Suomen Cup",
+      "type": "cup",
+      "country": "Finland",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fin-suomen-cup/",
+      "description": null
+    },
+    {
+      "name": "Liigacup",
+      "type": "cup",
+      "country": "Finland",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fin-liigacup/",
+      "description": null
+    },
+    {
+      "name": "Relegation Veikkausliiga",
+      "type": "league",
+      "country": "Finland",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fin-relegation-veikkausliiga/",
+      "description": null
+    },
+    {
+      "name": "Relegation Ykkösliiga",
+      "type": "league",
+      "country": "Finland",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fin-relegation-ykkoesliiga/",
+      "description": null
+    },
+    {
+      "name": "Ligue 1",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-ligue-1/",
+      "description": null
+    },
+    {
+      "name": "Ligue 2",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-ligue-2/",
+      "description": null
+    },
+    {
+      "name": "National",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-national/",
+      "description": null
+    },
+    {
+      "name": "Coupe de France",
+      "type": "cup",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-coupe-de-france/",
+      "description": null
+    },
+    {
+      "name": "National 2 Groupe A",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-national-2-groupe-a/",
+      "description": null
+    },
+    {
+      "name": "National 2 Groupe B",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-national-2-groupe-b/",
+      "description": null
+    },
+    {
+      "name": "National 2 Groupe C",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-national-2-groupe-c/",
+      "description": null
+    },
+    {
+      "name": "National 2 Groupe D",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-national-2-groupe-d/",
+      "description": null
+    },
+    {
+      "name": "Relegation Ligue 1",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-relegation-ligue-1/",
+      "description": null
+    },
+    {
+      "name": "Relegation Ligue 2",
+      "type": "league",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-relegation-ligue-2/",
+      "description": null
+    },
+    {
+      "name": "Trophée des Champions",
+      "type": "cup",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-trophee-des-champions/",
+      "description": null
+    },
+    {
+      "name": "Coupe de la Ligue",
+      "type": "cup",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-coupe-de-la-ligue/",
+      "description": null
+    },
+    {
+      "name": "Challenge Espoirs Gr. A",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-challenge-espoirs-gr-a/",
+      "description": null
+    },
+    {
+      "name": "Challenge Espoirs Gr. B",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-challenge-espoirs-gr-b/",
+      "description": null
+    },
+    {
+      "name": "Challenge Espoirs Phase Finale",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-challenge-espoirs-phase-finale/",
+      "description": null
+    },
+    {
+      "name": "Division 1 [Women]",
+      "type": "womens",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-frauen-division-1/",
+      "description": null
+    },
+    {
+      "name": "Coupe de France féminine [Women]",
+      "type": "womens",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-frauen-coupe-de-france-feminine/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. A [Youth]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-a-junioren-championnat-national-gr-a/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. B [Youth]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-a-junioren-championnat-national-gr-b/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. C [Youth]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-a-junioren-championnat-national-gr-c/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. D [Youth]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-a-junioren-championnat-national-gr-d/",
+      "description": null
+    },
+    {
+      "name": "Finale Championnat de France [Youth]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-a-junioren-finale-championnat-de-france/",
+      "description": null
+    },
+    {
+      "name": "Coupe Gambardella [Youth]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-a-junioren-coupe-gambardella/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. A [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-championnat-national-gr-a/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. B [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-championnat-national-gr-b/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. C [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-championnat-national-gr-c/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. D [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-championnat-national-gr-d/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. E [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-championnat-national-gr-e/",
+      "description": null
+    },
+    {
+      "name": "Championnat National Gr. F [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-championnat-national-gr-f/",
+      "description": null
+    },
+    {
+      "name": "Finale Championnat de France [Youth B]",
+      "type": "youth",
+      "country": "France",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/fra-b-junioren-finale-championnat-de-france/",
+      "description": null
+    },
+    {
+      "name": "Oberliga",
+      "type": "league",
+      "country": "GDR",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/gdr-oberliga/",
+      "description": null
+    },
+    {
+      "name": "Aufstiegsrunde Oberliga",
+      "type": "league",
+      "country": "GDR",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/gdr-aufstiegsrunde-oberliga/",
+      "description": null
+    },
+    {
+      "name": "DDR-Liga",
+      "type": "league",
+      "country": "GDR",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/gdr-ddr-liga/",
+      "description": null
+    },
+    {
+      "name": "FDGB-Pokal",
+      "type": "cup",
+      "country": "GDR",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/gdr-fdgb-pokal_2/",
+      "description": null
+    },
+    {
+      "name": "Erovnuli Liga",
+      "type": "league",
+      "country": "Georgia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/geo-erovnuli-liga/",
+      "description": null
+    },
+    {
+      "name": "David Kipiani Cup",
+      "type": "cup",
+      "country": "Georgia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/geo-david-kipiani-cup/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Georgia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/geo-relegation/",
+      "description": null
+    },
+    {
+      "name": "Super Cup",
+      "type": "cup",
+      "country": "Georgia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/geo-super-cup/",
+      "description": null
+    },
+    {
+      "name": "Bundesliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bundesliga/",
+      "description": null
+    },
+    {
+      "name": "2. Bundesliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/2-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "3. Liga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/3-liga/",
+      "description": null
+    },
+    {
+      "name": "DFB-Pokal",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/dfb-pokal/",
+      "description": null
+    },
+    {
+      "name": "Franz-Beckenbauer-Supercup",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/franz-beckenbauer-supercup/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Nord",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-nord/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Nordost",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-nordost/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga West",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-west/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Südwest",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-suedwest/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Bayern",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-bayern/",
+      "description": null
+    },
+    {
+      "name": "Relegation Bundesliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/relegation-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "Relegation 2. Bundesliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/relegation-2-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "Aufstiegsrunde 3. Liga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aufstiegsrunde-3-liga/",
+      "description": null
+    },
+    {
+      "name": "Bayernliga Nord",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bayernliga-nord/",
+      "description": null
+    },
+    {
+      "name": "Bayernliga Süd",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bayernliga-sued/",
+      "description": null
+    },
+    {
+      "name": "Bremenliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bremenliga/",
+      "description": null
+    },
+    {
+      "name": "Hessenliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/hessenliga/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Niedersachsen",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-niedersachsen/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Baden-Württemberg",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-baden-wuerttemberg/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Hamburg",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-hamburg/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Mittelrhein",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-mittelrhein/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Niederrhein",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-niederrhein/",
+      "description": null
+    },
+    {
+      "name": "Oberliga NOFV-Nord",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-nofv-nord/",
+      "description": null
+    },
+    {
+      "name": "Oberliga NOFV-Süd",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-nofv-sued/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Rheinland-Pfalz/Saar",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-rheinland-pfalz-saar_2/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Westfalen",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-westfalen/",
+      "description": null
+    },
+    {
+      "name": "Schleswig-Holstein-Liga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/schleswig-holstein-liga/",
+      "description": null
+    },
+    {
+      "name": "Playoffs Regionalliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-qualifikation_2/",
+      "description": null
+    },
+    {
+      "name": "Relegation Oberliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/relegation-oberliga/",
+      "description": null
+    },
+    {
+      "name": "Niederrheinpokal",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/niederrheinpokal/",
+      "description": null
+    },
+    {
+      "name": "Westfalenpokal",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/westfalenpokal/",
+      "description": null
+    },
+    {
+      "name": "Badischer Pokal",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/badischer-pokal/",
+      "description": null
+    },
+    {
+      "name": "Mecklenburg-Vorpommern-Pokal",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/mecklenburg-vorpommern-pokal/",
+      "description": null
+    },
+    {
+      "name": "Bayerischer Pokal",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bayerischer-pokal/",
+      "description": null
+    },
+    {
+      "name": "Niedersachsen-Pokal (3.L & RLN)",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/niedersachsen-pokal-3-l-rln/",
+      "description": null
+    },
+    {
+      "name": "Deutsche Meisterschaft",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/deutsche-meisterschaft/",
+      "description": null
+    },
+    {
+      "name": "Aufstiegsrunde 1. Bundesliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aufstiegsrunde-1-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "Aufstiegsrunde 2. Bundesliga",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/aufstiegsrunde-2-bundesliga/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Nord (1947-63)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-nord-1947-63/",
+      "description": null
+    },
+    {
+      "name": "Oberliga West (1947-63)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-west-1947-63/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Südwest (1946-63)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-suedwest-1946-63/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Süd (1945-63)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-sued-1945-63/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Süd (1994-2012)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-sued-1994-2012/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Nordost (1994-2000)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-nordost-1994-2000/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga West/Südwest (1994-2000)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-west-suedwest-1994-2000/",
+      "description": null
+    },
+    {
+      "name": "NRW-Liga (2008-2012)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nrw-liga-2008-2012/",
+      "description": null
+    },
+    {
+      "name": "Bayernliga (1994-2012)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/bayernliga-1994-2012/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Nord (2004-2008)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-nord-2004-2008/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Nordrhein (1994-2008)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-nordrhein-1994-2008/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Südwest (1994-2012)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-suedwest-1994-2012/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Westfalen (1978-2008)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-westfalen-1978-2008/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Niedersachsen-Ost (2008-2010)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-niedersachsen-ost-2008-2010/",
+      "description": null
+    },
+    {
+      "name": "Oberliga Niedersachsen-West (2008-2010)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/oberliga-niedersachsen-west-2008-2010/",
+      "description": null
+    },
+    {
+      "name": "League Cup",
+      "type": "cup",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/ligapokal/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Nord (1963-1974)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-nord-1963-1974/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga West (1963-1974)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-west-1963-1974/",
+      "description": null
+    },
+    {
+      "name": "Regionalliga Südwest (1963-1974)",
+      "type": "league",
+      "country": "Germany",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/regionalliga-suedwest-1963-1974/",
+      "description": null
+    },
+    {
+      "name": "Copa América",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Libertadores",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Sudamericana",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Recopa Sudamericana",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Lib. Quali.",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa America Qualifiers",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Merconorte",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Mercosur",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Conmebol",
+      "type": "international",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa América [Wo.]",
+      "type": "womens",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Libertadores [Wo.]",
+      "type": "womens",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "South American Games [U20 (W)]",
+      "type": "youth",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Sudamericano [U20]",
+      "type": "youth",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Libertadores [U20]",
+      "type": "youth",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "South American Games [U20]",
+      "type": "youth",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Sudamericano [U17]",
+      "type": "youth",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Sudamericano [U15]",
+      "type": "youth",
+      "country": "South America",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Argentina Primera División",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa de la Liga Profesional",
+      "type": "cup",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Primera B Nacional",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Argentina",
+      "type": "cup",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Primera B Metropolitana",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Torneo Federal A",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Relegation B Nacional",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa Argentina",
+      "type": "cup",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Trofeo de Campeones",
+      "type": "cup",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Reserve League",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa de la SAF Reserva",
+      "type": "cup",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Trofeo de Campeones Reserva",
+      "type": "cup",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Relegation Primera",
+      "type": "league",
+      "country": "Argentina",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Bolivia División Profesional",
+      "type": "league",
+      "country": "Bolivia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa de la Div. Prof.",
+      "type": "cup",
+      "country": "Bolivia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Simón Bolívar",
+      "type": "cup",
+      "country": "Bolivia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Promoción",
+      "type": "league",
+      "country": "Bolivia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Brazil Série A",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Série B",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa do Brasil",
+      "type": "cup",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Série C",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Série D",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa do Brasil",
+      "type": "cup",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Paulista (SP)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Carioca (RJ)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Mineiro (MG)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Gaúcho (RS)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Paranaense (PR)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Cearense (CE)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Goiano (GO)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Catarinense (SC)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Baiano (BA)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Pernambucano (PE)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Alagoano (AL)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Mato-Grossense (MT)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Paraense (PA)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Maranhense (MA)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Potiguar (RN)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Paraibano (PB)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Amazonense (AM)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Sergipano (SE)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Piauiense (PI)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Brasiliense (DF)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Capixaba (ES)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Acreano (AC)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Tocantinense (TO)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Roraimense (RR)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Sul-Mato Grossense (MS)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Rondoniense (RO)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Amapaense (AP)",
+      "type": "league",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa do Nordeste",
+      "type": "cup",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Verde",
+      "type": "cup",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Série A [Women]",
+      "type": "womens",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Paulista [Women]",
+      "type": "womens",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Série A [U20]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Série B [U20]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa do Brasil [U20]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa do Brasil [U20]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa do Nordeste [U20]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Brasileiro [U17]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa do Brasil [U17]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa do Brasil [U17]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Brasileiro [U23]",
+      "type": "youth",
+      "country": "Brazil",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Chile Primera División",
+      "type": "league",
+      "country": "Chile",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Primera B",
+      "type": "league",
+      "country": "Chile",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Chile",
+      "type": "cup",
+      "country": "Chile",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Playoffs 1/2",
+      "type": "league",
+      "country": "Chile",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa",
+      "type": "cup",
+      "country": "Chile",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Colombia Primera A",
+      "type": "league",
+      "country": "Colombia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Primera B",
+      "type": "league",
+      "country": "Colombia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Colombia",
+      "type": "cup",
+      "country": "Colombia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Superliga de Colombia",
+      "type": "cup",
+      "country": "Colombia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Promoción",
+      "type": "league",
+      "country": "Colombia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Ecuador Serie A",
+      "type": "league",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Serie B",
+      "type": "league",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Ecuador",
+      "type": "cup",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa",
+      "type": "cup",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Superliga [Women]",
+      "type": "womens",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Nacional [U19]",
+      "type": "youth",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeonato Nacional [U17]",
+      "type": "youth",
+      "country": "Ecuador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Paraguay Primera División",
+      "type": "league",
+      "country": "Paraguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Paraguay",
+      "type": "cup",
+      "country": "Paraguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa",
+      "type": "cup",
+      "country": "Paraguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Playoffs 1/2",
+      "type": "league",
+      "country": "Paraguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Peru Primera División",
+      "type": "league",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Segunda División",
+      "type": "league",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Bicentenario",
+      "type": "cup",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Perú",
+      "type": "cup",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa",
+      "type": "cup",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Relegation Cuadrangular de ascenso",
+      "type": "league",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Inca",
+      "type": "cup",
+      "country": "Peru",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Uruguay Primera División",
+      "type": "league",
+      "country": "Uruguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Segunda División",
+      "type": "league",
+      "country": "Uruguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Cup",
+      "type": "cup",
+      "country": "Uruguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Playoffs 2/3",
+      "type": "league",
+      "country": "Uruguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercopa",
+      "type": "cup",
+      "country": "Uruguay",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Venezuela Primera División",
+      "type": "league",
+      "country": "Venezuela",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Supercup",
+      "type": "cup",
+      "country": "Venezuela",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Venezuela",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Club World Cup",
+      "type": "tournament",
+      "country": "Worldwide",
+      "season": null,
+      "url": null,
+      "description": "Borussia Dortmund vs Mamelodi Sundowns"
+    },
+    {
+      "name": "Africa Cup",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/africa-cup/",
+      "description": null
+    },
+    {
+      "name": "Africa Cup Qual.",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/africa-cup-qual/",
+      "description": null
+    },
+    {
+      "name": "CAF Champions League",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/caf-champions-league/",
+      "description": null
+    },
+    {
+      "name": "CHAN",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/chan/",
+      "description": null
+    },
+    {
+      "name": "CHAN Qualification",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/chan-qualification/",
+      "description": null
+    },
+    {
+      "name": "African Football League",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/african-football-league/",
+      "description": null
+    },
+    {
+      "name": "CAF Super Cup",
+      "type": "international",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/caf-super-cup/",
+      "description": null
+    },
+    {
+      "name": "Women's Cup",
+      "type": "womens",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-womens-cup/",
+      "description": null
+    },
+    {
+      "name": "Women's Cup QF",
+      "type": "womens",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-womens-cup-qf/",
+      "description": null
+    },
+    {
+      "name": "Africa Cup [U20]",
+      "type": "youth",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-h-africa-cup/",
+      "description": null
+    },
+    {
+      "name": "Africa Cup [U17]",
+      "type": "youth",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-africa-cup/",
+      "description": null
+    },
+    {
+      "name": "Africa Cup [U23]",
+      "type": "youth",
+      "country": "Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u23-h-africa-cup/",
+      "description": null
+    },
+    {
+      "name": "Ligue 1",
+      "type": "league",
+      "country": "Algeria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/alg-ligue-1/",
+      "description": null
+    },
+    {
+      "name": "Premiership",
+      "type": "league",
+      "country": "Egypt",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/egy-premiership/",
+      "description": null
+    },
+    {
+      "name": "Super Cup",
+      "type": "cup",
+      "country": "Egypt",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/egy-super-cup/",
+      "description": null
+    },
+    {
+      "name": "Premier League",
+      "type": "league",
+      "country": "Ghana",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/gha-premier-league/",
+      "description": null
+    },
+    {
+      "name": "Division 1",
+      "type": "league",
+      "country": "Libya",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/lby-division-1/",
+      "description": null
+    },
+    {
+      "name": "Super Cup",
+      "type": "cup",
+      "country": "Libya",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/lby-super-cup/",
+      "description": null
+    },
+    {
+      "name": "Botola Pro 1",
+      "type": "league",
+      "country": "Morocco",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/mar-botola-pro-1/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Morocco",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/mar-relegation/",
+      "description": null
+    },
+    {
+      "name": "Professional League",
+      "type": "league",
+      "country": "Nigeria",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nga-professional-league/",
+      "description": null
+    },
+    {
+      "name": "Premier Soccer League",
+      "type": "league",
+      "country": "South Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/rsa-premier-soccer-league/",
+      "description": null
+    },
+    {
+      "name": "Promotion Playoff",
+      "type": "league",
+      "country": "South Africa",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/rsa-relegation/",
+      "description": null
+    },
+    {
+      "name": "Premier League",
+      "type": "league",
+      "country": "Sudan",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/sud-premier-league/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Sudan",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/sud-relegation/",
+      "description": null
+    },
+    {
+      "name": "Ligue 1",
+      "type": "league",
+      "country": "Tunisia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/tun-ligue-1/",
+      "description": null
+    },
+    {
+      "name": "Relegation",
+      "type": "league",
+      "country": "Tunisia",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/tun-relegation/",
+      "description": null
+    },
+    {
+      "name": "Gold Cup",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Gold Cup Quali.",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF Nations League A",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF Nations League B",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF Nations League C",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF Champions Cup",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Leagues Cup",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Central American Cup",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Caribbean Cup",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Campeones Cup",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF CLQ",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF League",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "North American SuperLiga",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF NLQ",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF Championship",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "CONCACAF Championship Qualification",
+      "type": "international",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Gold Cup",
+      "type": "womens",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Gold Cup Quali.",
+      "type": "womens",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Championship",
+      "type": "womens",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Championship QF",
+      "type": "womens",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Champions Cup [Wo.]",
+      "type": "womens",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Summer Cup NWSL x LIGA MXF [Wo.]",
+      "type": "womens",
+      "country": "CONCACAF",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Championship [U20 (W)]",
+      "type": "youth",
+      "country": "CONCACAF",
+      "season": "U20",
+      "url": null,
+      "description": "Women's youth competition"
+    },
+    {
+      "name": "Championship [U20]",
+      "type": "youth",
+      "country": "CONCACAF",
+      "season": "U20",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Championship [U17]",
+      "type": "youth",
+      "country": "CONCACAF",
+      "season": "U17",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Canada Premier League",
+      "type": "league",
+      "country": "Canada",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Canadian Championship Soccer League",
+      "type": "cup",
+      "country": "Canada",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Costa Rica Primera División",
+      "type": "league",
+      "country": "Costa Rica",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Costa Rica Primera División Relegation",
+      "type": "league",
+      "country": "Costa Rica",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Súper Copa",
+      "type": "cup",
+      "country": "Costa Rica",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "El Salvador Primera División",
+      "type": "league",
+      "country": "El Salvador",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Guatemala Liga Nacional",
+      "type": "league",
+      "country": "Guatemala",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Guatemala Liga Nacional Relegation",
+      "type": "league",
+      "country": "Guatemala",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Honduras Liga Nacional",
+      "type": "league",
+      "country": "Honduras",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Jamaica National Premier League",
+      "type": "league",
+      "country": "Jamaica",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Mexico Primera División",
+      "type": "league",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Liga de Expansión",
+      "type": "league",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "LP - Serie A",
+      "type": "league",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "LP - Serie B",
+      "type": "league",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa MX",
+      "type": "cup",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "SuperCopa MX",
+      "type": "cup",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Campeones",
+      "type": "cup",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa GNP por México",
+      "type": "cup",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "InterLiga",
+      "type": "cup",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Liga de Ascenso (2004-2020)",
+      "type": "league",
+      "country": "Mexico",
+      "season": "2004-2020",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Liga MX Femenil [Women]",
+      "type": "womens",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Copa Campeones [Women]",
+      "type": "womens",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [U20]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U20",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [U19]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U19",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [U19 Women]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U19",
+      "url": null,
+      "description": "Women's youth competition"
+    },
+    {
+      "name": "Fuerzas Basicas [U18]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U18",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [U17]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U17",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas Internacional [U17]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U17",
+      "url": null,
+      "description": "International youth competition"
+    },
+    {
+      "name": "Fuerzas Basicas [U16]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U16",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [U15]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U15",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [Youth D]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas [U23]",
+      "type": "youth",
+      "country": "Mexico",
+      "season": "U23",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Fuerzas Basicas []",
+      "type": "youth",
+      "country": "Mexico",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Nicaragua Liga Primera Playoffs 1/2",
+      "type": "league",
+      "country": "Nicaragua",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Panama Liga Panameña",
+      "type": "league",
+      "country": "Panama",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Major League Soccer",
+      "type": "league",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "USL Championship",
+      "type": "league",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "MLS Next Pro",
+      "type": "league",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "U.S. Open Cup",
+      "type": "cup",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "MLS Preseason",
+      "type": "league",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "MLS Player Combine",
+      "type": "league",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "MLS is Back KO Stage",
+      "type": "league",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "North American Soccer League Division 2 Professional League",
+      "type": "league",
+      "country": "USA",
+      "season": "Division 2 Professional",
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "National Women's Soccer League [Women]",
+      "type": "womens",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NWSL Challenge Cup [Women]",
+      "type": "womens",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Professional Soccer [Women]",
+      "type": "womens",
+      "country": "USA",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Club World Cup",
+      "type": "international",
+      "country": "Worldwide",
+      "season": null,
+      "url": null,
+      "description": "Borussia Dortmund vs Mamelodi Sundowns match mentioned"
+    },
+    {
+      "name": "Asian Cup",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Asian Cup Qual.",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Champions League Elite",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Champions League Elite Quali.",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Champions League Two",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Challenge League",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Challenge Cup",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Asian Cup",
+      "type": "womens",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Women's Asian Cup QF",
+      "type": "womens",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Women’s Champions League",
+      "type": "womens",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Asian Cup [U20 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U20 competition"
+    },
+    {
+      "name": "Asian Cup Qual. [U20 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U20 qualification"
+    },
+    {
+      "name": "Championship [U19 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U19 competition"
+    },
+    {
+      "name": "Championship Qual. [U19 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U19 qualification"
+    },
+    {
+      "name": "Asian Cup [U17 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U17 competition"
+    },
+    {
+      "name": "Asian Cup Qual. [U17 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U17 qualification"
+    },
+    {
+      "name": "Championship [U16 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U16 competition"
+    },
+    {
+      "name": "Championship Qual. [U16 (W)]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Women's U16 qualification"
+    },
+    {
+      "name": "Asian Cup [U20]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U20 competition"
+    },
+    {
+      "name": "Asian Cup Qual. [U20]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U20 qualification"
+    },
+    {
+      "name": "Championship [U19]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U19 competition"
+    },
+    {
+      "name": "Championship Qual. [U19]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U19 qualification"
+    },
+    {
+      "name": "Asian Cup [U17]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U17 competition"
+    },
+    {
+      "name": "Asian Cup Qual. [U17]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U17 qualification"
+    },
+    {
+      "name": "Championship [U16]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U16 competition"
+    },
+    {
+      "name": "Championship Qual. [U16]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U16 qualification"
+    },
+    {
+      "name": "Championship [U23]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U23 competition"
+    },
+    {
+      "name": "Asian Games [U23]",
+      "type": "youth",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": "Men's U23 competition"
+    },
+    {
+      "name": "Australia A-League",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Australia Cup",
+      "type": "cup",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL New South Wales",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL Victoria",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL Queensland",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL Northern NSW",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL Western Australia",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL South Australia",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL Capital Football",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "NPL Tasmania",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Waratah Cup",
+      "type": "cup",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "A-League Youth",
+      "type": "youth",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Pre-Season Cup",
+      "type": "cup",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Brisbane Premier League",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "National Premier Leagues Finals Series",
+      "type": "league",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "A-League Women",
+      "type": "womens",
+      "country": "Australia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Bahrain Premier League",
+      "type": "league",
+      "country": "Bahrain",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Bahrain Premier League Relegation",
+      "type": "league",
+      "country": "Bahrain",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "China Super League",
+      "type": "league",
+      "country": "China",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "China League One",
+      "type": "league",
+      "country": "China",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "China League One Cup",
+      "type": "cup",
+      "country": "China",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "China Super League Relegation",
+      "type": "league",
+      "country": "China",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "China League One Super Cup",
+      "type": "cup",
+      "country": "China",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Hong Kong Premier League",
+      "type": "league",
+      "country": "Hong Kong",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AFC Cup Playoff",
+      "type": "international",
+      "country": "Asia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Indian Super League",
+      "type": "league",
+      "country": "India",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "I-League",
+      "type": "league",
+      "country": "India",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "AIFF Super Cup",
+      "type": "cup",
+      "country": "India",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Liga 1",
+      "type": "league",
+      "country": "Indonesia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Persian Gulf Pro League",
+      "type": "league",
+      "country": "Iran",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Persian Gulf Pro League Cup",
+      "type": "cup",
+      "country": "Iran",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Persian Gulf Pro League Super Cup",
+      "type": "cup",
+      "country": "Iran",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Persian Gulf Pro League Relegation",
+      "type": "league",
+      "country": "Iran",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Iraq Stars League",
+      "type": "league",
+      "country": "Iraq",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "J1 League",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "J2 League",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "J3 League",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Japan Football League",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Emperor's Cup",
+      "type": "cup",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Japan League Cup",
+      "type": "cup",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Japan Super Cup",
+      "type": "cup",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "J1 League Relegation Playoffs",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "J2 League Relegation",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "J3 League Relegation",
+      "type": "league",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "U23 All Japan University Football Tournament",
+      "type": "youth",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": "U23 competition"
+    },
+    {
+      "name": "Premier League [U18]",
+      "type": "youth",
+      "country": "Japan",
+      "season": null,
+      "url": null,
+      "description": "U18 competition"
+    },
+    {
+      "name": "Kuwait Premier League",
+      "type": "league",
+      "country": "Kuwait",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Kuwait Emir Cup",
+      "type": "cup",
+      "country": "Kuwait",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Kuwait Super Cup",
+      "type": "cup",
+      "country": "Kuwait",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Kuwait Premier League Relegation",
+      "type": "league",
+      "country": "Kuwait",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Malaysia Super League",
+      "type": "league",
+      "country": "Malaysia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Malaysia Super League Relegation",
+      "type": "league",
+      "country": "Malaysia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Qatar Stars League",
+      "type": "league",
+      "country": "Qatar",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Qatar Stars League Relegation",
+      "type": "league",
+      "country": "Qatar",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Saudi Pro League",
+      "type": "league",
+      "country": "Saudi Arabia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "King’s Cup",
+      "type": "cup",
+      "country": "Saudi Arabia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Saudi Super Cup",
+      "type": "cup",
+      "country": "Saudi Arabia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Saudi Pro League Relegation",
+      "type": "league",
+      "country": "Saudi Arabia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Crown Prince Cup",
+      "type": "cup",
+      "country": "Saudi Arabia",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Singapore Premier League",
+      "type": "league",
+      "country": "Singapore",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Singapore Cup",
+      "type": "cup",
+      "country": "Singapore",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "K League 1",
+      "type": "league",
+      "country": "South Korea",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "K League 2",
+      "type": "league",
+      "country": "South Korea",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "South Korea Cup",
+      "type": "cup",
+      "country": "South Korea",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "South Korea K League 1 Relegation",
+      "type": "league",
+      "country": "South Korea",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Syrian League",
+      "type": "league",
+      "country": "Syria",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Thai League 1",
+      "type": "league",
+      "country": "Thailand",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "UAE Pro League",
+      "type": "league",
+      "country": "UA Emirates",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "UAE Pro League Relegation",
+      "type": "league",
+      "country": "UA Emirates",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "UAE Supercup",
+      "type": "cup",
+      "country": "UA Emirates",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Uzbekistan Super League",
+      "type": "league",
+      "country": "Uzbekistan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Uzbekistan Super League Relegation",
+      "type": "league",
+      "country": "Uzbekistan",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "V.League 1",
+      "type": "league",
+      "country": "Vietnam",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "V.League 1 Relegation",
+      "type": "league",
+      "country": "Vietnam",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "Vietnam Super Cup",
+      "type": "cup",
+      "country": "Vietnam",
+      "season": null,
+      "url": null,
+      "description": null
+    },
+    {
+      "name": "OFC Nations Cup",
+      "type": "international",
+      "country": "OFC",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/ofc-nations-cup/",
+      "description": null
+    },
+    {
+      "name": "OFC Champions League",
+      "type": "international",
+      "country": "OFC",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/ofc-champions-league/",
+      "description": null
+    },
+    {
+      "name": "OFC Women’s Nations Cup",
+      "type": "womens",
+      "country": "OFC",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/frauen-ofc-womens-nations-cup/",
+      "description": null
+    },
+    {
+      "name": "Championship [U20]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u20-h-championship/",
+      "description": null
+    },
+    {
+      "name": "Championship [U19]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-championship_2/",
+      "description": null
+    },
+    {
+      "name": "Championship Qualifikation [U19]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u19-h-championship-qualifikation/",
+      "description": null
+    },
+    {
+      "name": "Championship [U17]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u17-h-championship/",
+      "description": null
+    },
+    {
+      "name": "Championship [U16]",
+      "type": "youth",
+      "country": null,
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/u16-h-championship_2/",
+      "description": null
+    },
+    {
+      "name": "Cook Islands Round Cup",
+      "type": "cup",
+      "country": "Cook Islands",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/cok-cook-islands-round-cup/",
+      "description": null
+    },
+    {
+      "name": "National League",
+      "type": "league",
+      "country": "New Zealand",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nzl-national-league/",
+      "description": null
+    },
+    {
+      "name": "NZ Football Championship",
+      "type": "league",
+      "country": "New Zealand",
+      "season": null,
+      "url": "https://www.worldfootball.net/competition/nzl-nz-football-championship/",
+      "description": null
+    }
+  ],
+  "summary": {
+    "total_competitions": 682,
+    "categories": {
+      "leagues": 204,
+      "tournaments": 37,
+      "cups": 83,
+      "international": 81,
+      "regional": 1,
+      "youth": 97,
+      "womens": 51
+    }
+  }
+}
