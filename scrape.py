@@ -1243,7 +1243,7 @@ def extract_team_data_with_llm(team_id: str, html_by_type: dict, meta: dict, sav
     agent = create_team_data_extraction_agent(team_id)
     # Compose the prompt
     prompt = f"""
-Extract the following data for team: {team_id}
+Extract the following data for team: {team_id} 
 
 Meta information:
 {json.dumps(meta, ensure_ascii=False, indent=2)}
@@ -1260,7 +1260,25 @@ HTML content for each type:
     response = agent.step(human_message)
     agent_response = response.msgs[0].content if response.msgs else ""
     try:
-        return extract_json_from_response(agent_response)
+        result = extract_json_from_response(agent_response)
+        # Sort historical matches by date if present
+        if "historical" in result and isinstance(result["historical"], list):
+            from datetime import datetime
+            def parse_date_safe(d):
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):  # try common formats
+                    try:
+                        return datetime.strptime(d, fmt)
+                    except Exception:
+                        continue
+                try:
+                    return datetime.fromisoformat(d)
+                except Exception:
+                    return d  # fallback: string sort
+            result["historical"] = sorted(
+                result["historical"],
+                key=lambda m: parse_date_safe(m.get("date", ""))
+            )
+        return result
     except Exception as e:
         logger.error(f"Failed to extract JSON: {e}")
         if save_dir and save_prefix:
@@ -1291,6 +1309,39 @@ def extract_team_h2h_vs(site_name: str, team_id: str, vs_team: str) -> str:
     url = urljoin(SITE_URLS[site_name]["url"], sub_path)
     html_content = extract_html_from_url(url)
     return html_content
+
+# Utility to compute aggregate stats for h2h-vs filtered matches
+
+def compute_h2h_aggregate(matches):
+    agg = {
+        "matches": 0,
+        "wins": 0,
+        "draws": 0,
+        "losses": 0,
+        "goals_for": 0,
+        "goals_against": 0
+    }
+    for m in matches:
+        agg["matches"] += 1
+        result = m.get("result", "").lower()
+        if result == "win":
+            agg["wins"] += 1
+        elif result == "draw":
+            agg["draws"] += 1
+        elif result == "loss":
+            agg["losses"] += 1
+        # Parse score, e.g. "2:1"
+        score = m.get("score", "")
+        if ":" in score:
+            parts = score.split(":")
+            try:
+                goals_for = int(parts[0].strip())
+                goals_against = int(parts[1].strip())
+                agg["goals_for"] += goals_for
+                agg["goals_against"] += goals_against
+            except Exception:
+                pass
+    return agg
 
 def main():
     r"""Main function to scrape websites based on user selection."""
@@ -1614,6 +1665,33 @@ Examples:
                 print(f"\033[92m✓ Using cached {item} data: {cache_path}\033[0m")
                 try:
                     result = load_team_data_cache(cache_path)
+                    # If h2h-vs and date_from/date_to are provided, filter the matches
+                    if item == "h2h-vs" and "h2h_vs" in result:
+                        date_from = args.date_from
+                        date_to = args.date_to or str(datetime.datetime.now().year)
+                        matches = result["h2h_vs"].get("matches", [])
+                        if date_from or date_to:
+                            def in_range(match):
+                                try:
+                                    match_date = match.get("date", "")
+                                    # Extract year using first 4 digits
+                                    year = None
+                                    if len(match_date) >= 4 and match_date[:4].isdigit():
+                                        year = int(match_date[:4])
+                                    if year is None:
+                                        raise ValueError(f"Could not parse year from match date: {match_date}")
+                                    if date_from and year < int(date_from):
+                                        return False
+                                    if date_to and year > int(date_to):
+                                        return False
+                                    return True
+                                except Exception as e:
+                                    raise e
+                            filtered_matches = [m for m in matches if in_range(m)]
+                            result["h2h_vs"]["matches"] = filtered_matches
+                            # Compute aggregate for filtered matches
+                            agg_key = f"aggregate_{date_from or 'any'}_{date_to or 'any'}"
+                            result["h2h_vs"][agg_key] = compute_h2h_aggregate(filtered_matches)
                     print(json.dumps(result, ensure_ascii=False, indent=2))
                 except Exception as e:
                     print(f"\033[91mError loading cached {item} data: {e}\033[0m")
