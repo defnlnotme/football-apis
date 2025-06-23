@@ -18,7 +18,9 @@ SITE_URLS = {
             "historical": "/teams/{team}/{year}/3",
             "news": "/news/{team}/1", 
             "appearances": "/team_performance/{team}/{competition}-{year_prev}-{year}",
-            "squad": "/teams/{team}/{year}/2"
+            "squad": "/teams/{team}/{year}/2",
+            "h2h": "/teams/{team}/11/",
+            "h2h-vs": "/teams/{team}/{vs_team}/11/"
         }
     },
     "transfermarkt": {

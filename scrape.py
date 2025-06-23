@@ -1182,6 +1182,8 @@ The possible data types and their meanings are:
 - squad: Extract the full list of players registered for the team in the given season/year. For each player, include name, position, shirt number, nationality, and any other available details (e.g., date of birth, role/captaincy, appearances, goals).
 - news: Extract recent news articles or updates about the team. For each article, include the title, URL, publication date, and a brief summary or excerpt if available. Only include news directly relevant to the team.
 - appearances: Extract cumulative player statistics for the given season/year and competition. For each player, include total minutes played, number of matches, goals, assists, yellow cards, red cards, and any other available stats (e.g., substitutions, starts, penalties, clean sheets for goalkeepers).
+- h2h: Extract a summary of all opponents that the team has played against. For each opponent, include the opponent name, total matches, wins, draws, losses, goals for, goals against, and any other available aggregate stats. Do NOT include match-by-match details here.
+- h2h-vs: Extract detailed head-to-head data for matches between the team and a single specified opponent. For each match, include the date, competition, round, venue, score, and any other available details. If a date range is specified, only include matches within that range. Also provide aggregate stats (total matches, wins, draws, losses, goals for/against) for this matchup and time range.
 
 IMPORTANT: Do NOT include the raw_html field in the output for any category.
 
@@ -1189,53 +1191,29 @@ For the provided HTML, extract the relevant information for the corresponding da
 
 Return ONLY a valid JSON object as your output, with no extra text or explanation.
 
-Example output:
+Example output for h2h:
 {{
-  "team_id": "{team_id}",
-  "historical": {{
-    "year": "2023",
+  "team_id": "ac-milan",
+  "h2h": {{
+    "opponents": [
+      {{"opponent": "Inter", "matches": 50, "wins": 20, "draws": 15, "losses": 15, "goals_for": 60, "goals_against": 55}},
+      {{"opponent": "Juventus", "matches": 40, "wins": 10, "draws": 10, "losses": 20, "goals_for": 35, "goals_against": 50}}
+      // ... more opponents ...
+    ]
+  }}
+}}
+
+Example output for h2h-vs:
+{{
+  "team_id": "ac-milan",
+  "h2h_vs": {{
+    "opponent": "Inter",
+    "date_from": "2021-01-01",
+    "date_to": "2024-06-30",
+    "aggregate": {{"matches": 10, "wins": 3, "draws": 2, "losses": 5, "goals_for": 12, "goals_against": 18}},
     "matches": [
-      {{"date": "2023-05-01", "opponent": "Inter", "score": "2-1", "place": "San Siro", "competition": "Serie A", "round": "34", "result": "win"}},
-      ...
-    ]
-  }}
-}}
-
-or
-
-{{
-  "team_id": "{team_id}",
-  "squad": {{
-    "year": "2023",
-    "players": [
-      {{"name": "...", "position": "...", "number": "...", "nationality": "...", "dob": "...", "role": "..."}},
-      ...
-    ]
-  }}
-}}
-
-or
-
-{{
-  "team_id": "{team_id}",
-  "news": {{
-    "articles": [
-      {{"title": "...", "url": "...", "date": "...", "summary": "..."}},
-      ...
-    ]
-  }}
-}}
-
-or
-
-{{
-  "team_id": "{team_id}",
-  "appearances": {{
-    "competition": "ita-serie-a",
-    "year": "2023",
-    "players": [
-      {{"name": "...", "time_played": "...", "matches": "...", "goals": "...", "assists": "...", "yellow_cards": "...", "red_cards": "...", "starts": "...", "subs": "...", "penalties": "...", "clean_sheets": "..."}},
-      ...
+      {{"date": "2023-05-01", "competition": "Serie A", "round": "34", "venue": "San Siro", "score": "2-1", "result": "win"}},
+      // ... more matches ...
     ]
   }}
 }}
@@ -1291,6 +1269,28 @@ HTML content for each type:
                 f.write(agent_response)
             print(f"\033[93m⚠ Failed to extract JSON, saved raw agent response to {raw_path}\033[0m")
         raise
+
+def extract_team_h2h(site_name: str, team_id: str) -> str:
+    """Extract the h2h summary page for a team, if the site provides a static link."""
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("h2h")
+    if not pattern:
+        raise ValueError(f"No h2h pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    html_content = extract_html_from_url(url)
+    return html_content
+
+def extract_team_h2h_vs(site_name: str, team_id: str, vs_team: str) -> str:
+    """Extract the h2h-vs page for a team against a specific opponent, if the site provides a static link."""
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("h2h-vs")
+    if not pattern:
+        raise ValueError(f"No h2h-vs pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id).replace("{vs_team}", vs_team)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    html_content = extract_html_from_url(url)
+    return html_content
 
 def main():
     r"""Main function to scrape websites based on user selection."""
@@ -1390,7 +1390,7 @@ Examples:
         "--extract-team-data",
         type=str,
         default=None,
-        help="Comma-separated list of team data to extract: historical,news,appearances,squad, or 'all' for all. Requires --site, --team-id, and --year for historical/squad. --competition-id is only required if 'appearances' is included."
+        help="Comma-separated list of team data to extract: historical,news,appearances,squad,h2h,h2h-vs, or 'all' for all. Requires --site, --team-id, and --year for historical/squad. --competition-id is only required if 'appearances' is included. h2h-vs requires --vs-team. Optionally use --date-from and --date-to for h2h-vs."
     )
     parser.add_argument(
         "--team-id",
@@ -1404,9 +1404,126 @@ Examples:
         default=None,
         help="Year for historical or squad extraction (default: latest year)"
     )
+    parser.add_argument(
+        "--vs-team",
+        type=str,
+        default=None,
+        help="Opponent team ID or slug for h2h-vs extraction"
+    )
+    parser.add_argument(
+        "--date-from",
+        type=str,
+        default=None,
+        help="Start date (YYYY-MM-DD) for h2h-vs extraction (optional)"
+    )
+    parser.add_argument(
+        "--date-to",
+        type=str,
+        default=None,
+        help="End date (YYYY-MM-DD) for h2h-vs extraction (optional, defaults to today)"
+    )
+    parser.add_argument(
+        "--list-competitions",
+        action="store_true",
+        help="List all competitions from cache for the given site (or all sites if not specified)"
+    )
+    parser.add_argument(
+        "--list-teams",
+        action="store_true",
+        help="List all teams from cache for the given site and competition (or all if not specified)"
+    )
 
     args = parser.parse_args()
-    
+
+    # Handle --list-competitions argument
+    if args.list_competitions:
+        def print_competition_ids(data, site_name):
+            competitions = data.get("competitions", [])
+            if not competitions:
+                print(f"\033[93mNo competitions found for {site_name}\033[0m")
+                return
+            print(f"\033[94mCompetitions for {site_name}:\033[0m")
+            for comp in competitions:
+                # Try to get a slug from the URL, fallback to name
+                url = comp.get("url", "")
+                slug = url.rstrip("/").split("/")[-1] if url else comp.get("name", "")
+                name = comp.get("name", slug)
+                print(f"{slug} ({name})")
+        if args.site and args.site.lower() != "all":
+            found, _, _, _ = get_site_info(args.site)
+            if not found:
+                print(f"\033[91mError: Site '{args.site}' not found.\033[0m")
+                print("\033[93mUse --list to see available sites.\033[0m")
+                sys.exit(1)
+            data = load_competitions_cache(args.site)
+            if data:
+                print_competition_ids(data, args.site)
+            else:
+                print(f"\033[93mNo competitions cache found for {args.site}\033[0m")
+        else:
+            for site_name in SITE_URLS:
+                data = load_competitions_cache(site_name)
+                if data:
+                    print_competition_ids(data, site_name)
+                else:
+                    print(f"\033[93mNo competitions cache found for {site_name}\033[0m")
+        sys.exit(0)
+
+    # Handle --list-teams argument
+    if args.list_teams:
+        def print_team_ids(data, site_name):
+            teams = data.get("teams", [])
+            if not teams:
+                print(f"\033[93mNo teams found for {site_name}\033[0m")
+                return
+            print(f"\033[94mTeams for {site_name}:\033[0m")
+            for team in teams:
+                url = team.get("url", "")
+                slug = url.rstrip("/").split("/")[-1] if url else team.get("name", "")
+                name = team.get("name", slug)
+                print(f"{slug} ({name})")
+        if args.site and args.site.lower() != "all":
+            found, _, _, _ = get_site_info(args.site)
+            if not found:
+                print(f"\033[91mError: Site '{args.site}' not found.\033[0m")
+                print("\033[93mUse --list to see available sites.\033[0m")
+                sys.exit(1)
+            if args.competition_id:
+                data = load_teams_cache(args.site, args.competition_id)
+                if data:
+                    print_team_ids(data, args.site)
+                else:
+                    print(f"\033[93mNo teams cache found for {args.site} (competition: {args.competition_id})\033[0m")
+            else:
+                # Try to find all teams cache files for the site
+                cache_dir = get_cache_dir(args.site)
+                found_any = False
+                for f in cache_dir.glob("teams_*.json"):
+                    comp_id = f.name[len("teams_"):-len(".json")]
+                    with open(f, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    print(f"\033[96m[Competition: {comp_id}]\033[0m")
+                    print_team_ids(data, args.site)
+                    found_any = True
+                if not found_any:
+                    print(f"\033[93mNo teams cache found for {args.site}\033[0m")
+        else:
+            for site_name in SITE_URLS:
+                cache_dir = get_cache_dir(site_name)
+                found_any = False
+                for f in cache_dir.glob("teams_*.json"):
+                    comp_id = f.name[len("teams_"):-len(".json")]
+                    with open(f, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    print(f"\033[96m[Site: {site_name} | Competition: {comp_id}]\033[0m")
+                    print_team_ids(data, site_name)
+                    found_any = True
+                if not found_any:
+                    print(f"\033[93mNo teams cache found for {site_name}\033[0m")
+        sys.exit(0)
+
+    # Now continue with logging setup, validation, and scraping logic
+
     # Set up logging based on arguments
     logs_dir = base_dir / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -1479,7 +1596,7 @@ Examples:
             return
         requested = [x.strip().lower() for x in args.extract_team_data.split(",") if x.strip()]
         if len(requested) == 1 and requested[0] == "all":
-            requested = ["historical", "news", "appearances", "squad"]
+            requested = ["historical", "news", "appearances", "squad", "h2h", "h2h-vs"]
         current_year = str(datetime.datetime.now().year)
         today_str = datetime.datetime.now().strftime('%Y%m%d')
         data_dir = os.path.join(base_dir, "data", today_str)
@@ -1553,6 +1670,27 @@ Examples:
                     fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
                 html = extract_team_squad(args.site, args.team_id, year)
                 html_by_type["squad"] = html
+            elif item == "h2h":
+                fetch_url = SITE_URLS[args.site]["url"]
+                teams_info = SITE_URLS.get(args.site, {}).get("teams", {})
+                pattern = teams_info.get("h2h")
+                if pattern:
+                    sub_path = pattern.replace("{team}", args.team_id)
+                    fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
+                html = extract_team_h2h(args.site, args.team_id)
+                html_by_type["h2h"] = html
+            elif item == "h2h-vs":
+                if not args.vs_team:
+                    print("\033[91mError: --vs-team is required for h2h-vs extraction.\033[0m")
+                    continue
+                fetch_url = SITE_URLS[args.site]["url"]
+                teams_info = SITE_URLS.get(args.site, {}).get("teams", {})
+                pattern = teams_info.get("h2h-vs")
+                if pattern:
+                    sub_path = pattern.replace("{team}", args.team_id).replace("{vs_team}", args.vs_team)
+                    fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
+                html = extract_team_h2h_vs(args.site, args.team_id, args.vs_team)
+                html_by_type["h2h-vs"] = html
             else:
                 print(f"\033[91mUnknown extract-team-data value: {item}\033[0m")
                 continue
@@ -1560,15 +1698,18 @@ Examples:
                 try:
                     meta_with_url = dict(meta)
                     meta_with_url["fetch_url"] = fetch_url
+                    if item == "h2h-vs":
+                        print(4)
+                        meta_with_url["vs_team"] = args.vs_team
+                        meta_with_url["date_from"] = args.date_from
+                        meta_with_url["date_to"] = args.date_to or datetime.datetime.now().strftime('%Y-%m-%d')
                     result = extract_team_data_with_llm(args.team_id, html_by_type, meta_with_url, save_dir=str(data_dir), save_prefix=f"{filename}_{item}")
-                    # Add fetch_url to the result for traceability
                     result["fetch_url"] = fetch_url
                     print(json.dumps(result, ensure_ascii=False, indent=2))
                     save_team_data_cache(cache_path, result)
                     print(f"\033[92m✓ Saved extracted {item} data to {cache_path}\033[0m")
-                except Exception:
-                    # Error and raw already handled in extract_team_data_with_llm
-                    pass
+                except Exception as e:
+                    print(f"\033[91mError extracting or saving {item} data: {e}\033[0m")
         return
     
     # Handle scraping all sites
