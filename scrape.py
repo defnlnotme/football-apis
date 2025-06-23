@@ -1346,142 +1346,166 @@ def compute_h2h_aggregate(matches):
 def main():
     r"""Main function to scrape websites based on user selection."""
     parser = argparse.ArgumentParser(
-        description="Web scraper for various football websites",
+        description="""
+Football Web Scraper & Data Extractor
+====================================
+
+A unified CLI tool for scraping, extracting, and structuring football data from multiple football-related websites. Supports LLM-powered extraction of competitions, teams, and detailed team data (historical, squad, news, appearances, h2h, h2h-vs). Includes cache management, logging, and flexible batch workflows.
+        """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Capabilities:
+- List all supported football sites and their scraping capabilities
+- Scrape and cache HTML content from football sites
+- Extract and structure competition lists for a given nation or sub-URL using LLMs
+- Extract and structure team lists for a given competition using LLMs
+- Extract detailed team data (historical matches, squad, news, appearances, h2h, h2h-vs) for a given team, year, and competition
+- List cached competitions and teams for quick lookup
+- Clear cache for all or specific sites
+- Fine-grained cache control (duration, force fetch, etc.)
+- Logging to file or console
+- Flexible CLI for advanced workflows (e.g., batch extraction, filtering, etc.)
+
 Examples:
-  python scrape.py --list                    # List all available sites
-  python scrape.py --site worldfootball      # Scrape worldfootball.net
-  python scrape.py --site transfermarkt      # Scrape transfermarkt.com
-  python scrape.py --site all                # Scrape all available sites
-  python scrape.py --site worldfootball --extract-competitions --nation Italy --sub-url ita-serie-a  # Extract competitions for Italy
-  python scrape.py --site worldfootball --extract-teams --nation Italy --sub-url ita-serie-a --competition-id ita-serie-a   # Extract teams for a specific competition
-  python scrape.py --site worldfootball --extract-team-data all --team-id ac-milan --year 2023 --competition-id ita-serie-a   # Extract all team data for AC Milan
-  python scrape.py --site worldfootball --extract-team-data historical,news --team-id ac-milan --year 2023   # Extract historical and news pages for AC Milan in 2023
-  python scrape.py --site worldfootball --extract-team-data appearances --team-id ac-milan --competition-id ita-serie-a   # Extract appearances page for AC Milan in Serie A (requires --competition-id)
-  python scrape.py --site worldfootball --extract-team-data squad --team-id ac-milan --year 2023         # Extract squad page for AC Milan in 2023
-  python scrape.py --clear-cache             # Clear all cache files
-  python scrape.py --site worldfootball --clear-cache           # Clear cache for specific site
-  python scrape.py --site worldfootball --enable-file-logging   # Scrape with file logging enabled
+  python scrape.py --list
+  python scrape.py --site worldfootball --extract-competitions --nation Italy --sub-url ita-serie-a
+  python scrape.py --site worldfootball --extract-teams --nation Italy --sub-url ita-serie-a --competition-id ita-serie-a
+  python scrape.py --site worldfootball --extract-team-data all --team-id ac-milan --year 2023 --competition-id ita-serie-a
+  python scrape.py --site worldfootball --extract-team-data historical,news --team-id ac-milan --year 2023
+  python scrape.py --site worldfootball --extract-team-data appearances --team-id ac-milan --competition-id ita-serie-a
+  python scrape.py --site worldfootball --extract-team-data squad --team-id ac-milan --year 2023
+  python scrape.py --site worldfootball --extract-team-data h2h --team-id ac-milan
+  python scrape.py --site worldfootball --extract-team-data h2h-vs --team-id ac-milan --vs-team inter --date-from 2021 --date-to 2024
+  python scrape.py --clear-cache
+  python scrape.py --site worldfootball --clear-cache
+  python scrape.py --site worldfootball --enable-file-logging
+
+For more details, see the README or function docstrings.
         """
     )
     
     parser.add_argument(
         "--site", 
         type=str, 
-        help="Name of the site to scrape (use 'all' for all sites, '--list' to see available sites)"
+        help="Name of the site to scrape (use 'all' for all sites, '--list' to see available sites). Supports all major football data sites configured in SITE_URLS."
     )
     
     parser.add_argument(
         "--list", 
         action="store_true", 
-        help="List all available sites"
+        help="List all available sites with their scraping and extraction capabilities."
     )
     
     parser.add_argument(
         "--extract-competitions",
         action="store_true",
-        help="Extract competition data using LLM after scraping"
+        help="Extract competition data using LLM after scraping. Requires --nation and --sub-url. Results are structured and saved to cache."
     )
     
     parser.add_argument(
         "--extract-teams",
         action="store_true",
-        help="Extract football team data using LLM after scraping. Requires --competition-id."
+        help="Extract football team data using LLM after scraping. Requires --nation, --sub-url, and --competition-id. Results are structured and saved to cache."
     )
     
     parser.add_argument(
         "--cache-days",
         type=int,
         default=None,
-        help="Override cache duration in days (0 = no caching, default = use site setting)"
+        help="Override cache duration in days (0 = no caching, default = use site setting). Controls how long HTML and extracted data are cached."
     )
     
     parser.add_argument(
         "--clear-cache",
         action="store_true",
-        help="Clear all cache files before scraping"
+        help="Clear all cache files before scraping. Use with --site to clear cache for a specific site."
     )
     
     parser.add_argument(
         "--enable-file-logging",
         action="store_true",
-        help="Enable logging to file (web_scraper.log)"
+        help="Enable logging to file (logs/web_scraper.log) in addition to console output. Useful for debugging and batch runs."
     )
     
     parser.add_argument(
         "--nation",
         type=str,
         default=None,
-        help="Nation to filter competitions by (required with --extract-competitions)"
+        help="Nation to filter competitions or teams by (required with --extract-competitions or --extract-teams)."
     )
     
     parser.add_argument(
         "--sub-url",
         type=str,
         default=None,
-        help="Sub-URL path to scrape (required with --nation)"
+        help="Sub-URL path or slug to scrape (required with --nation). Used to target a specific competition or league page."
     )
     
     parser.add_argument(
         "--competition-id",
         type=str,
         default=None,
-        help="Competition ID (slug, URL, or identifier) to extract teams for. Required with --extract-teams."
+        help="Competition ID (slug, URL, or identifier) to extract teams for. Required with --extract-teams and for some team data extractions."
     )
     
     parser.add_argument(
         "--force-fetch",
         action="store_true",
-        help="Force fetch fresh data and skip all cache (HTML, competitions, teams)"
+        help="Force fetch fresh data and skip all cache (HTML, competitions, teams, team data). Useful for re-scraping or debugging."
     )
-
-    # New CLI flags for team data pages
+    
     parser.add_argument(
         "--extract-team-data",
         type=str,
         default=None,
-        help="Comma-separated list of team data to extract: historical,news,appearances,squad,h2h,h2h-vs, or 'all' for all. Requires --site, --team-id, and --year for historical/squad. --competition-id is only required if 'appearances' is included. h2h-vs requires --vs-team. Optionally use --date-from and --date-to for h2h-vs."
+        help="Comma-separated list of team data to extract: historical,news,appearances,squad,h2h,h2h-vs, or 'all' for all. Requires --site and --team-id. --year and --competition-id may be required for some types. h2h-vs requires --vs-team. Optionally use --date-from and --date-to for h2h-vs."
     )
+    
     parser.add_argument(
         "--team-id",
         type=str,
         default=None,
-        help="Team ID or slug for team-specific fetches"
+        help="Team ID or slug for team-specific fetches (required for --extract-team-data)."
     )
+    
     parser.add_argument(
         "--year",
         type=str,
         default=None,
-        help="Year for historical or squad extraction (default: latest year)"
+        help="Year for historical or squad extraction (default: latest year). Used for team data extraction."
     )
+    
     parser.add_argument(
         "--vs-team",
         type=str,
         default=None,
-        help="Opponent team ID or slug for h2h-vs extraction"
+        help="Opponent team ID or slug for h2h-vs extraction (required for h2h-vs in --extract-team-data)."
     )
+    
     parser.add_argument(
         "--date-from",
         type=str,
         default=None,
-        help="Start date (YYYY-MM-DD) for h2h-vs extraction (optional)"
+        help="Start date (YYYY-MM-DD or year) for h2h-vs extraction (optional, used for filtering matches)."
     )
+    
     parser.add_argument(
         "--date-to",
         type=str,
         default=None,
-        help="End date (YYYY-MM-DD) for h2h-vs extraction (optional, defaults to today)"
+        help="End date (YYYY-MM-DD or year) for h2h-vs extraction (optional, defaults to today)."
     )
+    
     parser.add_argument(
         "--list-competitions",
         action="store_true",
-        help="List all competitions from cache for the given site (or all sites if not specified)"
+        help="List all competitions from cache for the given site (or all sites if not specified). Useful for quickly finding competition IDs."
     )
+    
     parser.add_argument(
         "--list-teams",
         action="store_true",
-        help="List all teams from cache for the given site and competition (or all if not specified)"
+        help="List all teams from cache for the given site and competition (or all if not specified). Useful for quickly finding team IDs."
     )
 
     args = parser.parse_args()
