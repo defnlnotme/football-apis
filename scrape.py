@@ -30,6 +30,8 @@ from typing import Dict, List, Tuple, Optional, Any
 import shutil
 from site_urls import SITE_URLS
 from urllib.parse import urljoin
+import datetime
+import os
 
 base_dir = pathlib.Path(__file__).parent
 env_path = base_dir / ".envrc"
@@ -37,8 +39,32 @@ load_dotenv(dotenv_path=str(env_path))
 
 set_log_level(level="DEBUG")
 
+MODEL_TYPES = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite-preview-06-17",
+]
+
 # Use the root logger for this script
 logger = logging.getLogger()
+
+TEAM_DATA_CACHE_TTL_SECONDS = 3600  # 1 hour
+
+def get_team_data_cache_path(data_dir: str, filename: str, category: str) -> str:
+    return os.path.join(data_dir, f"{filename}_{category}.json")
+
+def is_team_data_cache_valid(cache_path: str) -> bool:
+    if not os.path.exists(cache_path):
+        return False
+    file_age = datetime.datetime.now().timestamp() - os.path.getmtime(cache_path)
+    return file_age < TEAM_DATA_CACHE_TTL_SECONDS
+
+def load_team_data_cache(cache_path: str) -> dict:
+    with open(cache_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_team_data_cache(cache_path: str, data: dict):
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 def get_cache_dir(site_name: str) -> pathlib.Path:
     """Get the cache directory for a given site, ensure it exists."""
@@ -267,8 +293,7 @@ def create_competition_extraction_agent(nation: str) -> ChatAgent:
         # Create a model for the agent
         model = ModelFactory.create(
             model_platform=ModelPlatformType.GEMINI,
-            model_type="gemini-2.5-flash", #-lite-preview-06-17",
-            model_config_dict={"temperature": 1/3},  # Low temperature for consistent extraction
+            model_type="gemini-2.5-flash"
         )
         
         # Interpolate the nation into the system prompt
@@ -826,6 +851,7 @@ def extract_json_from_response(agent_response: str) -> dict:
         # Fallback 1: If no markdown block is found, search for the outer curly braces.
         # This is a broader search that finds the first '{' and the last '}'
         logger.warning("Could not find markdown JSON block. Trying fallback search for '{}'.")
+        print(agent_response)
         json_match = re.search(r'\{[\s\S]*\}', agent_response)
         if json_match:
             # Group 0 captures the entire match, including the braces.
@@ -835,20 +861,14 @@ def extract_json_from_response(agent_response: str) -> dict:
             # Fallback 2: Try parsing the entire response string directly.
             logger.warning("Fallback search failed. Attempting to parse the entire response.")
             try:
-                team_data = json.loads(agent_response.strip())
-                total_teams = team_data.get('summary', {}).get('total_teams', 0)
-                logger.info(f"Successfully extracted {total_teams} teams (whole response parse)")
-                return team_data
+                return json.loads(agent_response.strip())
             except json.JSONDecodeError:
                 # If all methods fail, raise an error.
                 raise ValueError("No valid JSON found in the response.")
 
     # Now, parse the JSON string obtained from the successful regex match.
     try:
-        team_data = json.loads(json_str)
-        total_teams = team_data.get('summary', {}).get('total_teams', 0)
-        logger.info(f"Successfully extracted {total_teams} teams from regex match.")
-        return team_data
+        return json.loads(json_str)
     except json.JSONDecodeError as e:
         raise ValueError(f"Found a potential JSON string but it could not be parsed: {e}")
 
@@ -1098,6 +1118,180 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
     print(f"\033[93mNo extraction type specified. Use --extract-competitions or --extract-teams.\033[0m")
     return False
 
+def extract_team_historical(site_name: str, team_id: str, year: str) -> str:
+    """Extract the historical page for a team for a given year, if the site provides a static link."""
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("historical")
+    if not pattern:
+        raise ValueError(f"No historical pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id).replace("{year}", year)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    html_content = extract_html_from_url(url)
+    # Optionally cache here if desired
+    return html_content
+
+def extract_team_news(site_name: str, team_id: str) -> str:
+    """Extract the news page for a team, if the site provides a static link."""
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("news")
+    if not pattern:
+        raise ValueError(f"No news pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    html_content = extract_html_from_url(url)
+    # Optionally cache here if desired
+    return html_content
+
+def extract_team_appearances(site_name: str, team_id: str, competition_id: str, year: str) -> str:
+    """Extract the appearances page for a team in a competition, if the site provides a static link."""
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("appearances")
+    if not pattern:
+        raise ValueError(f"No appearances pattern for site {site_name}")
+    # Handle {year_prev} and {year} placeholders if present
+    if "{year_prev}" in pattern or "{year}" in pattern:
+        year_int = int(year)
+        year_prev = str(year_int - 1)
+        sub_path = pattern.replace("{team}", team_id).replace("{competition}", competition_id).replace("{year_prev}", year_prev).replace("{year}", year)
+    else:
+        sub_path = pattern.replace("{team}", team_id).replace("{competition}", competition_id)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    html_content = extract_html_from_url(url)
+    # Optionally cache here if desired
+    return html_content
+
+def extract_team_squad(site_name: str, team_id: str, year: str) -> str:
+    """Extract the squad page for a team for a given year, if the site provides a static link."""
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("squad")
+    if not pattern:
+        raise ValueError(f"No squad pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id).replace("{year}", year)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    html_content = extract_html_from_url(url)
+    # Optionally cache here if desired
+    return html_content
+
+TEAM_DATA_EXTRACTION_PROMPT = """
+You are a specialized football team data extraction agent. You will be given HTML content for a football team, and this HTML corresponds to EXACTLY ONE of the following data types. You MUST extract and return ONLY the section for that data type, and OMIT all other sections from your output.
+
+The team ID for this extraction is: {team_id}
+
+The possible data types and their meanings are:
+- historical: Extract the team's match history for the given season/year. For each match, include the date, opponent, final score, venue (home/away or stadium name), and any other relevant match details (e.g., competition, round, result type).
+- squad: Extract the full list of players registered for the team in the given season/year. For each player, include name, position, shirt number, nationality, and any other available details (e.g., date of birth, role/captaincy, appearances, goals).
+- news: Extract recent news articles or updates about the team. For each article, include the title, URL, publication date, and a brief summary or excerpt if available. Only include news directly relevant to the team.
+- appearances: Extract cumulative player statistics for the given season/year and competition. For each player, include total minutes played, number of matches, goals, assists, yellow cards, red cards, and any other available stats (e.g., substitutions, starts, penalties, clean sheets for goalkeepers).
+
+IMPORTANT: Do NOT include the raw_html field in the output for any category.
+
+For the provided HTML, extract the relevant information for the corresponding data type and organize it in a JSON object as shown below. Only include a section if the corresponding HTML content is provided.
+
+Return ONLY a valid JSON object as your output, with no extra text or explanation.
+
+Example output:
+{{
+  "team_id": "{team_id}",
+  "historical": {{
+    "year": "2023",
+    "matches": [
+      {{"date": "2023-05-01", "opponent": "Inter", "score": "2-1", "place": "San Siro", "competition": "Serie A", "round": "34", "result": "win"}},
+      ...
+    ]
+  }}
+}}
+
+or
+
+{{
+  "team_id": "{team_id}",
+  "squad": {{
+    "year": "2023",
+    "players": [
+      {{"name": "...", "position": "...", "number": "...", "nationality": "...", "dob": "...", "role": "..."}},
+      ...
+    ]
+  }}
+}}
+
+or
+
+{{
+  "team_id": "{team_id}",
+  "news": {{
+    "articles": [
+      {{"title": "...", "url": "...", "date": "...", "summary": "..."}},
+      ...
+    ]
+  }}
+}}
+
+or
+
+{{
+  "team_id": "{team_id}",
+  "appearances": {{
+    "competition": "ita-serie-a",
+    "year": "2023",
+    "players": [
+      {{"name": "...", "time_played": "...", "matches": "...", "goals": "...", "assists": "...", "yellow_cards": "...", "red_cards": "...", "starts": "...", "subs": "...", "penalties": "...", "clean_sheets": "..."}},
+      ...
+    ]
+  }}
+}}
+
+If the data cannot be extracted, return an empty object for the relevant section.
+"""
+
+def create_team_data_extraction_agent(team_id: str) -> ChatAgent:
+    """Create a CAMEL agent for extracting structured team data from HTML content, formatting the prompt with the team_id."""
+    model = ModelFactory.create(
+        model_platform=ModelPlatformType.GEMINI,
+        model_type="gemini-2.5-flash-lite-preview-06-17",
+        model_config_dict={"temperature": 1/3},
+    )
+    system_prompt = TEAM_DATA_EXTRACTION_PROMPT.format(team_id=team_id)
+    agent = ChatAgent(
+        model=model,
+        system_message=system_prompt
+    )
+    logger.info("Team data extraction agent created successfully")
+    return agent
+
+def extract_team_data_with_llm(team_id: str, html_by_type: dict, meta: dict, save_dir: str = "", save_prefix: str = "") -> dict:
+    """Extract structured team data from HTML content for each requested type using the specialized agent.
+    If JSON extraction fails, save the raw response to a .txt file if save_dir and save_prefix are provided.
+    """
+    agent = create_team_data_extraction_agent(team_id)
+    # Compose the prompt
+    prompt = f"""
+Extract the following data for team: {team_id}
+
+Meta information:
+{json.dumps(meta, ensure_ascii=False, indent=2)}
+
+HTML content for each type:
+"""
+    for t, html in html_by_type.items():
+        prompt += f"\n--- {t.upper()} HTML ---\n{html}\n"
+    prompt += "\nPlease return the extracted data in the required JSON format."
+    human_message = BaseMessage.make_user_message(
+        role_name="Human",
+        content=prompt
+    )
+    response = agent.step(human_message)
+    agent_response = response.msgs[0].content if response.msgs else ""
+    try:
+        return extract_json_from_response(agent_response)
+    except Exception as e:
+        logger.error(f"Failed to extract JSON: {e}")
+        if save_dir and save_prefix:
+            raw_path = os.path.join(save_dir, save_prefix + "_raw.txt")
+            with open(raw_path, "w", encoding="utf-8") as f:
+                f.write(agent_response)
+            print(f"\033[93m⚠ Failed to extract JSON, saved raw agent response to {raw_path}\033[0m")
+        raise
+
 def main():
     r"""Main function to scrape websites based on user selection."""
     parser = argparse.ArgumentParser(
@@ -1109,13 +1303,15 @@ Examples:
   python scrape.py --site worldfootball      # Scrape worldfootball.net
   python scrape.py --site transfermarkt      # Scrape transfermarkt.com
   python scrape.py --site all                # Scrape all available sites
-  python scrape.py --site worldfootball --extract-competitions  # Scrape and extract competitions
-  python scrape.py --site worldfootball --cache-days 0          # Scrape without caching
-  python scrape.py --site all --cache-days 7                    # Scrape all sites with 7-day cache
+  python scrape.py --site worldfootball --extract-competitions --nation Italy --sub-url ita-serie-a  # Extract competitions for Italy
+  python scrape.py --site worldfootball --extract-teams --nation Italy --sub-url ita-serie-a --competition-id ita-serie-a   # Extract teams for a specific competition
+  python scrape.py --site worldfootball --extract-team-data all --team-id ac-milan --year 2023 --competition-id ita-serie-a   # Extract all team data for AC Milan
+  python scrape.py --site worldfootball --extract-team-data historical,news --team-id ac-milan --year 2023   # Extract historical and news pages for AC Milan in 2023
+  python scrape.py --site worldfootball --extract-team-data appearances --team-id ac-milan --competition-id ita-serie-a   # Extract appearances page for AC Milan in Serie A (requires --competition-id)
+  python scrape.py --site worldfootball --extract-team-data squad --team-id ac-milan --year 2023         # Extract squad page for AC Milan in 2023
   python scrape.py --clear-cache             # Clear all cache files
   python scrape.py --site worldfootball --clear-cache           # Clear cache for specific site
   python scrape.py --site worldfootball --enable-file-logging   # Scrape with file logging enabled
-  python scrape.py --site worldfootball --extract-teams --nation Germany --sub-url bundesliga --competition-id bundesliga-2023-2024   # Scrape and extract teams for a specific competition
         """
     )
     
@@ -1188,7 +1384,27 @@ Examples:
         action="store_true",
         help="Force fetch fresh data and skip all cache (HTML, competitions, teams)"
     )
-    
+
+    # New CLI flags for team data pages
+    parser.add_argument(
+        "--extract-team-data",
+        type=str,
+        default=None,
+        help="Comma-separated list of team data to extract: historical,news,appearances,squad, or 'all' for all. Requires --site, --team-id, and --year for historical/squad. --competition-id is only required if 'appearances' is included."
+    )
+    parser.add_argument(
+        "--team-id",
+        type=str,
+        default=None,
+        help="Team ID or slug for team-specific fetches"
+    )
+    parser.add_argument(
+        "--year",
+        type=str,
+        default=None,
+        help="Year for historical or squad extraction (default: latest year)"
+    )
+
     args = parser.parse_args()
     
     # Set up logging based on arguments
@@ -1255,6 +1471,105 @@ Examples:
     if args.nation and not args.sub_url:
         print("\033[91mError: --sub-url is required when using --nation.\033[0m")
         sys.exit(1)
+    
+    # Handle new team data fetch flags
+    if args.extract_team_data:
+        if not args.site or not args.team_id:
+            print("\033[91mError: --site and --team-id are required for --extract-team-data.\033[0m")
+            return
+        requested = [x.strip().lower() for x in args.extract_team_data.split(",") if x.strip()]
+        if len(requested) == 1 and requested[0] == "all":
+            requested = ["historical", "news", "appearances", "squad"]
+        current_year = str(datetime.datetime.now().year)
+        today_str = datetime.datetime.now().strftime('%Y%m%d')
+        data_dir = os.path.join(base_dir, "data", today_str)
+        os.makedirs(data_dir, exist_ok=True)
+        fname_parts = [args.site, args.team_id]
+        if args.year:
+            fname_parts.append(args.year)
+        if args.competition_id:
+            fname_parts.append(args.competition_id)
+        filename = "_".join(fname_parts) + "_teamdata"
+        meta = {"site": args.site, "team_id": args.team_id, "year": args.year or current_year, "competition_id": args.competition_id or None}
+        for item in requested:
+            cache_path = get_team_data_cache_path(data_dir, filename, item)
+            if not args.force_fetch and is_team_data_cache_valid(cache_path):
+                print(f"\033[92m✓ Using cached {item} data: {cache_path}\033[0m")
+                try:
+                    result = load_team_data_cache(cache_path)
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
+                except Exception as e:
+                    print(f"\033[91mError loading cached {item} data: {e}\033[0m")
+                continue
+            html_by_type = {}
+            fetch_url = None
+            if item == "historical":
+                year = args.year if args.year else current_year
+                if not args.year:
+                    print(f"\033[93mNo --year provided for historical extraction, using latest year: {year}\033[0m")
+                fetch_url = SITE_URLS[args.site]["url"]
+                teams_info = SITE_URLS.get(args.site, {}).get("teams", {})
+                pattern = teams_info.get("historical")
+                if pattern:
+                    sub_path = pattern.replace("{team}", args.team_id).replace("{year}", year)
+                    fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
+                html = extract_team_historical(args.site, args.team_id, year)
+                html_by_type["historical"] = html
+            elif item == "news":
+                fetch_url = SITE_URLS[args.site]["url"]
+                teams_info = SITE_URLS.get(args.site, {}).get("teams", {})
+                pattern = teams_info.get("news")
+                if pattern:
+                    sub_path = pattern.replace("{team}", args.team_id)
+                    fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
+                html = extract_team_news(args.site, args.team_id)
+                html_by_type["news"] = html
+            elif item == "appearances":
+                if not args.competition_id:
+                    print("\033[91mError: --competition-id is required for appearances extraction.\033[0m")
+                    continue
+                year = args.year if args.year else current_year
+                if not args.year:
+                    print(f"\033[93mNo --year provided for appearances extraction, using latest year: {year}\033[0m")
+                fetch_url = SITE_URLS[args.site]["url"]
+                teams_info = SITE_URLS.get(args.site, {}).get("teams", {})
+                pattern = teams_info.get("appearances")
+                if pattern:
+                    year_int = int(year)
+                    year_prev = str(year_int - 1)
+                    sub_path = pattern.replace("{team}", args.team_id).replace("{competition}", args.competition_id).replace("{year_prev}", year_prev).replace("{year}", year)
+                    fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
+                html = extract_team_appearances(args.site, args.team_id, args.competition_id, year)
+                html_by_type["appearances"] = html
+            elif item == "squad":
+                year = args.year if args.year else current_year
+                if not args.year:
+                    print(f"\033[93mNo --year provided for squad extraction, using latest year: {year}\033[0m")
+                fetch_url = SITE_URLS[args.site]["url"]
+                teams_info = SITE_URLS.get(args.site, {}).get("teams", {})
+                pattern = teams_info.get("squad")
+                if pattern:
+                    sub_path = pattern.replace("{team}", args.team_id).replace("{year}", year)
+                    fetch_url = urljoin(SITE_URLS[args.site]["url"], sub_path)
+                html = extract_team_squad(args.site, args.team_id, year)
+                html_by_type["squad"] = html
+            else:
+                print(f"\033[91mUnknown extract-team-data value: {item}\033[0m")
+                continue
+            if html_by_type:
+                try:
+                    meta_with_url = dict(meta)
+                    meta_with_url["fetch_url"] = fetch_url
+                    result = extract_team_data_with_llm(args.team_id, html_by_type, meta_with_url, save_dir=str(data_dir), save_prefix=f"{filename}_{item}")
+                    # Add fetch_url to the result for traceability
+                    result["fetch_url"] = fetch_url
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
+                    save_team_data_cache(cache_path, result)
+                    print(f"\033[92m✓ Saved extracted {item} data to {cache_path}\033[0m")
+                except Exception:
+                    # Error and raw already handled in extract_team_data_with_llm
+                    pass
+        return
     
     # Handle scraping all sites
     if args.site.lower() == "all":

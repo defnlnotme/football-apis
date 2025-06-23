@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+When writing extraction prompts, make sure to include the relevant variables (provided by the cli arguments) that will be formatted by python. Make sure to use `{{}}` when providing example json outputs to avoid python inadvertently formatting such examples.w

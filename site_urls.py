@@ -17,7 +17,7 @@ SITE_URLS = {
             "competition": "/competition/{competition}",
             "historical": "/teams/{team}/{year}/3",
             "news": "/news/{team}/1", 
-            "appearances": "/team_performance/{team}/{competition}",
+            "appearances": "/team_performance/{team}/{competition}-{year_prev}-{year}",
             "squad": "/teams/{team}/{year}/2"
         }
     },
