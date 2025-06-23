@@ -13,9 +13,13 @@ SITE_URLS = {
             "/continents/afc",
             "/continents/ofc",
         ],
-        "teams": [
-            "/teams"
-        ]
+        "teams": {
+            "competition": "/competition/{competition}",
+            "historical": "/teams/{team}/{year}/3",
+            "news": "/news/{team}/1", 
+            "appearances": "/team_performance/{team}/{competition}",
+            "squad": "/teams/{team}/{year}/2"
+        }
     },
     "transfermarkt": {
         "url": "https://www.transfermarkt.com/",

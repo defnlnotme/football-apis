@@ -176,7 +176,7 @@ def clear_cache(site_name: Optional[str] = None) -> int:
 
 # Competition extraction agent system prompt (with {nation} placeholder)
 COMPETITION_EXTRACTION_PROMPT = """
-You are a specialized football competition data extraction agent. Your task is to analyze raw HTML content (as returned by Firecrawl or other scrapers from football websites) and extract a comprehensive list of all competitions, tournaments, and leagues mentioned on the page.
+You are a specialized football competition data extraction agent. Your task is to analyze raw HTML content from football websites and extract a comprehensive list of all competitions, tournaments, and leagues mentioned on the page.
 
 Your responsibilities include:
 1. Identifying all football competitions, tournaments, and leagues mentioned in the content
@@ -729,23 +729,309 @@ def extract_all_competitions(site_name: str, site_info: dict, nation: Optional[s
     # teams_urls is now available for future use
     return result
 
-def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict = {"default": 1}, extract_competitions: bool = False, nation: Optional[str] = None, sub_url: Optional[str] = None) -> bool:
-    """Scrape a specific site.
+TEAM_EXTRACTION_PROMPT = """
+You are a specialized football team data extraction agent. Your task is to analyze raw HTML content from a football competition page and extract a comprehensive list of all football teams and clubs participating in the specified competition.
+
+Competition ID: {competition_id}
+
+Your responsibilities include:
+1. Identifying all football teams, clubs, and national teams participating in the competition (Competition ID: {competition_id})
+2. Extracting team names, types, and relevant details
+3. Organizing teams by category (club, national, youth, women, etc.)
+4. Providing structured data in JSON format
+5. Ensuring accuracy and completeness of the extracted information
+
+IMPORTANT: For each team, you MUST extract the URL that points to the team's page. The URL is mandatory. If the URL is not directly visible, you must infer it from the context, links, or any available information. Do NOT omit the URL field. If you cannot find a URL, make a best effort to construct it based on the patterns used on the website, and clearly indicate it is inferred.
+
+IMPORTANT: Only include teams that are confirmed to be participating in the specified competition (Competition ID: {competition_id}). If you are not sure that a team belongs to the specified competition, do NOT include it in the results.
+
+Return ALL clubs, national teams, youth teams, and women's teams participating in the competition. Do not limit the results to a single team.
+
+When analyzing content, look for:
+- Club names and abbreviations
+- National teams
+- Youth teams
+- Women's teams
+- League or competition associations
+
+Return ONLY a valid JSON object as your output, with no extra text or explanation.
+
+Example output:
+{{
+  "teams": [
+    {{
+      "name": "Team name 1",
+      "type": "club|national|youth|women",
+      "competition": "{competition_id}",
+      "url": "URL to the team page (MANDATORY)",
+      "description": "Brief description if available"
+    }},
+    {{
+      "name": "Team name 2",
+      "type": "club|national|youth|women",
+      "competition": "{competition_id}",
+      "url": "URL to the team page (MANDATORY)",
+      "description": "Brief description if available"
+    }}
+    // ... more teams ...
+  ],
+  "summary": {{
+    "total_teams": 0,
+    "categories": {{
+      "club": 0,
+      "national": 0,
+      "youth": 0,
+      "women": 0
+    }}
+  }}
+}}
+
+If no teams are found, return:
+{{
+  "teams": [],
+  "summary": {{
+    "total_teams": 0,
+    "categories": {{
+      "club": 0,
+      "national": 0,
+      "youth": 0,
+      "women": 0
+    }}
+  }}
+}}
+"""
+
+def extract_json_from_response(agent_response: str) -> dict:
+    """
+    Extracts a JSON object from a string, which may be wrapped in markdown code blocks.
+
+    Args:
+        agent_response: The string potentially containing the JSON data.
+
+    Returns:
+        A dictionary parsed from the JSON data.
+
+    Raises:
+        ValueError: If no valid JSON is found in the response.
+    """
+    # Corrected regex: Use `\s` instead of `\\s` in the raw string.
+    # This correctly searches for whitespace characters.
+    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', agent_response)
     
+    if json_match:
+        # Group 1 captures the content between the markdown fences.
+        json_str = json_match.group(1)
+        logger.info("Successfully extracted JSON string from markdown block.")
+    else:
+        # Fallback 1: If no markdown block is found, search for the outer curly braces.
+        # This is a broader search that finds the first '{' and the last '}'
+        logger.warning("Could not find markdown JSON block. Trying fallback search for '{}'.")
+        json_match = re.search(r'\{[\s\S]*\}', agent_response)
+        if json_match:
+            # Group 0 captures the entire match, including the braces.
+            json_str = json_match.group(0)
+            logger.info("Successfully extracted JSON string using fallback curly brace search.")
+        else:
+            # Fallback 2: Try parsing the entire response string directly.
+            logger.warning("Fallback search failed. Attempting to parse the entire response.")
+            try:
+                team_data = json.loads(agent_response.strip())
+                total_teams = team_data.get('summary', {}).get('total_teams', 0)
+                logger.info(f"Successfully extracted {total_teams} teams (whole response parse)")
+                return team_data
+            except json.JSONDecodeError:
+                # If all methods fail, raise an error.
+                raise ValueError("No valid JSON found in the response.")
+
+    # Now, parse the JSON string obtained from the successful regex match.
+    try:
+        team_data = json.loads(json_str)
+        total_teams = team_data.get('summary', {}).get('total_teams', 0)
+        logger.info(f"Successfully extracted {total_teams} teams from regex match.")
+        return team_data
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Found a potential JSON string but it could not be parsed: {e}")
+
+def create_team_extraction_agent(competition_id: str) -> ChatAgent:
+    """Create a CAMEL agent for extracting team data from HTML content, with competition_id interpolation.
+    Args:
+        competition_id (str): The competition ID to extract teams for.
+    Returns:
+        ChatAgent: The configured team extraction agent
+    """
+    try:
+        model = ModelFactory.create(
+            model_platform=ModelPlatformType.GEMINI,
+            model_type="gemini-2.5-flash",
+            model_config_dict={"temperature": 1/3},
+        )
+        system_prompt = TEAM_EXTRACTION_PROMPT.format(competition_id=competition_id)
+        agent = ChatAgent(
+            model=model,
+            system_message=system_prompt
+        )
+        logger.info("Team extraction agent created successfully")
+        return agent
+    except Exception as e:
+        logger.error(f"Failed to create team extraction agent: {str(e)}")
+        raise e
+
+def extract_teams_with_llm(html_content: str, site_name: str, competition_id: str) -> Dict[str, Any]:
+    """Extract team list from HTML content using a CAMEL agent.
+    Args:
+        html_content (str): The HTML content to analyze
+        site_name (str): The name of the site being analyzed
+        competition_id (str): Competition ID to filter teams by
+    Returns:
+        Dict[str, Any]: Extracted team data in structured format
+    """
+    try:
+        logger.info(f"Starting team extraction for {site_name}")
+        agent = create_team_extraction_agent(competition_id)
+        analysis_prompt = f"""
+Please analyze the following HTML content from {site_name} and extract all football teams and clubs participating in competition: {competition_id}.
+
+HTML Content:
+{html_content}
+
+Please provide a comprehensive list of all teams found, organized by type and category.
+"""
+        human_message = BaseMessage.make_user_message(
+            role_name="Human",
+            content=analysis_prompt
+        )
+        logger.info("Sending content to team extraction agent")
+        response = agent.step(human_message)
+        if not response.msgs:
+            logger.error("No response received from team extraction agent")
+            return {
+                "teams": [],
+                "summary": {
+                    "total_teams": 0,
+                    "categories": {
+                        "club": 0,
+                        "national": 0,
+                        "youth": 0,
+                        "women": 0
+                    }
+                },
+                "error": "No response from agent"
+            }
+        agent_response = response.msgs[0].content
+        logger.info(f"Received response from agent: {len(agent_response)} characters")
+        return extract_json_from_response(agent_response)
+    except Exception as e:
+        logger.error(f"Exception during team extraction: {str(e)}")
+        logger.debug(traceback.format_exc())
+        return {
+            "teams": [],
+            "summary": {
+                "total_teams": 0,
+                "categories": {
+                    "club": 0,
+                    "national": 0,
+                    "youth": 0,
+                    "women": 0
+                }
+            },
+            "error": f"Extraction failed: {str(e)}"
+        }
+
+def display_teams(team_data: Dict[str, Any], site_name: str) -> None:
+    """Display extracted teams in a nice format for a specific competition."""
+    teams = team_data.get("teams", [])
+    summary = team_data.get("summary", {})
+    if not teams:
+        print(f"\033[93mNo teams found on {site_name}\033[0m")
+        return
+    print(f"\n\033[94m=== Teams Found on {site_name} ===\033[0m")
+    print(f"\033[92mTotal: {summary.get('total_teams', len(teams))}\033[0m")
+    # Group teams by type
+    teams_by_type = {}
+    for team in teams:
+        team_type = team.get("type", "unknown")
+        if team_type not in teams_by_type:
+            teams_by_type[team_type] = []
+        teams_by_type[team_type].append(team)
+    for team_type, tms in teams_by_type.items():
+        print(f"\n\033[95m{team_type.upper()} ({len(tms)}):\033[0m")
+        for team in tms:
+            name = team.get("name", "Unknown")
+            nation = team.get("nation", "")
+            league = team.get("league", "")
+            description = team.get("description", "")
+            print(f"  • {name}")
+            if nation:
+                print(f"    Nation: {nation}")
+            if league:
+                print(f"    League: {league}")
+            if description:
+                print(f"    Description: {description}")
+            print()
+
+def get_teams_cache_file_path(site_name: str, competition_id: Optional[str] = None) -> pathlib.Path:
+    """Get the cache file path for teams for a given site and competition ID."""
+    cache_dir = get_cache_dir(site_name)
+    if competition_id:
+        safe_comp_id = re.sub(r'[^\w\-_.]', '_', competition_id)
+        return cache_dir / f"teams_{safe_comp_id}.json"
+    return cache_dir / "teams.json"
+
+def is_teams_cache_valid(site_name: str, cache_days_obj: dict, competition_id: Optional[str] = None) -> bool:
+    """Check if the teams cache is valid for a given site and competition ID."""
+    cache_days = cache_days_obj.get("teams", cache_days_obj["default"])
+    cache_file = get_teams_cache_file_path(site_name, competition_id)
+    if cache_days == 0:
+        return False
+    if not cache_file.exists():
+        return False
+    file_age = time.time() - cache_file.stat().st_mtime
+    max_age_seconds = cache_days * 24 * 60 * 60
+    return file_age < max_age_seconds
+
+def load_teams_cache(site_name: str, competition_id: Optional[str] = None) -> Optional[dict]:
+    """Load teams cache for a given site and competition ID."""
+    try:
+        cache_file = get_teams_cache_file_path(site_name, competition_id)
+        if cache_file.exists():
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load teams cache for {site_name} (competition_id={competition_id}): {str(e)}")
+    return None
+
+def save_teams_cache(site_name: str, data: dict, competition_id: Optional[str] = None) -> bool:
+    """Save teams cache for a given site and competition ID."""
+    try:
+        cache_file = get_teams_cache_file_path(site_name, competition_id)
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        logger.info(f"Cached teams for {site_name} (competition_id={competition_id})")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to cache teams for {site_name} (competition_id={competition_id}): {str(e)}")
+        return False
+
+def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict = {"default": 1}, extract_competitions: bool = False, nation: Optional[str] = None, sub_url: Optional[str] = None, extract_teams: bool = False, competition_id: Optional[str] = None, force_fetch: bool = False) -> bool:
+    """Scrape a specific site and optionally extract competitions or teams. If extracting teams, a competition ID must be provided.
     Args:
         site_name (str): The name of the site.
         url (str): The URL to scrape.
         description (str): Description of the site.
         cache_days_obj (dict): Number of days to cache content (0 = no caching).
         extract_competitions (bool): Whether to extract competitions using LLM.
-        nation (Optional[str]): Nation to filter competitions by.
-        sub_url (Optional[str]): Sub-URL path to scrape (required with --nation)
-        
+        nation (Optional[str]): Nation to filter competitions/teams by.
+        sub_url (Optional[str]): Sub-URL path to scrape (required with --nation).
+        extract_teams (bool): Whether to extract teams using LLM.
+        competition_id (Optional[str]): Competition ID (slug, URL, or identifier) to extract teams for. Required with --extract-teams.
+        force_fetch (bool): If True, skip all cache and always fetch fresh data.
     Returns:
         bool: True if successful, False otherwise.
     """
+    if force_fetch:
+        print(f"\033[94mForce fetch: Skipping all cache and fetching fresh data\033[0m")
     cache_days = cache_days_obj["default"]
-    logger.info(f"Starting HTML extraction from: {site_name} ({url})")
+    logger.info(f"Starting extraction from: {site_name}")
     print(f"\033[94mScraping: {site_name}\033[0m")
     print(f"\033[94mDescription: {description}\033[0m")
     print(f"\033[94mURL: {url}\033[0m")
@@ -755,155 +1041,62 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
         print(f"\033[94mCache: {cache_days} day{'s' if cache_days != 1 else ''}\033[0m")
     if extract_competitions:
         print(f"\033[94mCompetition extraction: Enabled\033[0m")
+    if extract_teams:
+        print(f"\033[94mTeam extraction: Enabled (competition ID: {competition_id})\033[0m")
 
-    # Check if we can use cached content
-    if cache_days > 0 and is_cache_valid(site_name, cache_days):
-        cached_content = load_cached_content(site_name)
-        if cached_content:
-            print(f"\033[92m✓ Using cached content ({len(cached_content)} characters)\033[0m")
-            file_path = save_html_to_file(cached_content, site_name)
-            if file_path.startswith("Error"):
-                print(f"\033[93m⚠ Failed to save cached content to file: {file_path}\033[0m")
-            else:
-                print(f"\033[92m✓ Cached content saved to: {file_path}\033[0m")
-            if extract_competitions:
-                # Check competitions cache
-                if is_competitions_cache_valid(site_name, cache_days_obj):
-                    competitions_data = load_competitions_cache(site_name)
-                    if competitions_data:
-                        print(f"\033[92m✓ Using cached competitions data\033[0m")
-                        display_competitions(competitions_data, site_name)
-                        return True
-                # If competitions.json exists (even if expired), load and display it instead of fetching again
-                cache_file = get_competitions_cache_file_path(site_name)
-                if cache_file.exists():
-                    try:
-                        with open(cache_file, 'r', encoding='utf-8') as f:
-                            competitions_data = json.load(f)
-                        print(f"\033[93m⚠ Using existing competitions.json (expired cache)\033[0m")
-                        display_competitions(competitions_data, site_name)
-                        return True
-                    except Exception as e:
-                        logger.error(f"Failed to load competitions.json for {site_name}: {str(e)}. Refetching...")
-                print(f"\033[94mExtracting competitions from cached content...\033[0m")
-                competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], nation=nation, sub_url=sub_url)
-                if "error" in competition_data:
-                    print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
-                else:
-                    save_competitions_cache(site_name, competition_data)
-                    comp_file_path = save_competitions_to_file(competition_data, site_name)
-                    if comp_file_path.startswith("Error"):
-                        print(f"\033[93m⚠ Failed to save competition data: {comp_file_path}\033[0m")
-                    else:
-                        total_competitions = competition_data.get('summary', {}).get('total_competitions', 0)
-                        print(f"\033[92m✓ Competition data extracted and saved to: {comp_file_path}\033[0m")
-                        print(f"\033[92m✓ Found {total_competitions} competitions\033[0m")
-                        categories = competition_data.get('summary', {}).get('categories', {})
-                        if categories:
-                            print(f"\033[94mCompetition categories:\033[0m")
-                            for category, count in categories.items():
-                                if count > 0:
-                                    print(f"  - {category}: {count}")
-                        display_competitions(competition_data, site_name)
-            return True
+    # Only handle competitions or teams, never fetch the homepage by default
+    if extract_teams:
+        print(f"\033[94mExtracting teams from {site_name} (competition ID: {competition_id})...\033[0m")
+        teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+        competition_pattern = teams_info.get("competition")
+        if competition_pattern and competition_id:
+            sub_path = competition_pattern.replace("{competition}", competition_id)
+            team_url = urljoin(url, sub_path)
+        else:
+            team_url = competition_id if competition_id and competition_id.startswith('http') else urljoin(url, competition_id or "")
+        # Check for cached competition HTML page
+        cache_dir = get_cache_dir(site_name)
+        safe_competition_id = re.sub(r'[^\w\-_.]', '_', competition_id or "competition")
+        cache_file = cache_dir / f"competition_{safe_competition_id}.html"
+        if cache_file.exists():
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            print(f"\033[92m✓ Using cached competition HTML page: {cache_file}\033[0m")
+        else:
+            html_content = extract_html_from_url(team_url)
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            print(f"\033[92m✓ Cached competition HTML page: {cache_file}\033[0m")
+        teams_data = extract_teams_with_llm(html_content, site_name, competition_id or "")
+        save_teams_cache(site_name, teams_data, competition_id)
+        display_teams(teams_data, site_name)
+        return True
 
-    max_retries = 1
-    retry_delay = 2  # seconds, initial delay
-    
-    # Compile regex pattern once for performance
-    rate_limit_pattern = re.compile(r'\b(?:429|HTTP\s*429|status\s*429|rate\s*limit|too\s*many\s*requests)\b', re.IGNORECASE)
-    payment_required_pattern = re.compile(r'\b(?:402|HTTP\s*402|status\s*402|payment\s*required|insufficient\s*credits)\b', re.IGNORECASE)
-    
-    attempt = 0
-    while attempt < max_retries:
-        attempt += 1
-        try:
-            logger.info(f"Attempt {attempt} to extract HTML from {site_name}.")
-            
-            # Extract HTML content
-            html_content = extract_html_from_url(url)
-            
-            if html_content.startswith("Error:") or html_content.startswith("Exception:"):
-                raise Exception(html_content)
-            
-            # Save HTML to file
-            file_path = save_html_to_file(html_content, site_name)
-            
-            if file_path.startswith("Error"):
-                raise Exception(file_path)
-            
-            # Cache the content if caching is enabled
-            if cache_days > 0:
-                if save_cached_content(site_name, html_content):
-                    print(f"\033[92m✓ Content cached for {cache_days} day{'s' if cache_days != 1 else ''}\033[0m")
-                else:
-                    print(f"\033[93m⚠ Failed to cache content\033[0m")
-            
-            logger.info(f"HTML extraction and saving completed successfully for {site_name}.")
-            print(f"\033[92m✓ HTML extracted and saved to: {file_path}\033[0m")
-            print(f"\033[92m✓ Content length: {len(html_content)} characters\033[0m")
-            
-            # Extract competitions if requested
-            if extract_competitions:
-                print(f"\033[94mExtracting competitions from {site_name}...\033[0m")
-                competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], nation=nation, sub_url=sub_url)
-                if "error" in competition_data:
-                    print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
-                else:
-                    save_competitions_cache(site_name, competition_data)
-                    comp_file_path = save_competitions_to_file(competition_data, site_name)
-                    if comp_file_path.startswith("Error"):
-                        print(f"\033[93m⚠ Failed to save competition data: {comp_file_path}\033[0m")
-                    else:
-                        total_competitions = competition_data.get('summary', {}).get('total_competitions', 0)
-                        print(f"\033[92m✓ Competition data extracted and saved to: {comp_file_path}\033[0m")
-                        print(f"\033[92m✓ Found {total_competitions} competitions\033[0m")
-                        categories = competition_data.get('summary', {}).get('categories', {})
-                        if categories:
-                            print(f"\033[94mCompetition categories:\033[0m")
-                            for category, count in categories.items():
-                                if count > 0:
-                                    print(f"  - {category}: {count}")
-                        display_competitions(competition_data, site_name)
-            
-            return True
-            
-        except Exception as e:
-            msg = str(e)
-            logger.error(f"Error on attempt {attempt} for {site_name}: {msg}")
-            logger.debug(traceback.format_exc())
-            
-            # Handle 429 errors with 3 retries, others with 1 retry
-            if rate_limit_pattern.search(msg):
-                max_retries = 3
-                retry_match = re.search(r"'retryDelay': '([0-9]+)s'", msg)
-                if retry_match:
-                    retry_delay = int(retry_match.group(1))
-                logger.warning(f"Rate limit error (429) for {site_name}. Retrying in {retry_delay} seconds... (attempt {attempt}/{max_retries})")
-                print(f"\033[93m⚠ Rate limit error (429). Retrying in {retry_delay} seconds... (attempt {attempt}/{max_retries})\033[0m")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            elif payment_required_pattern.search(msg):
-                logger.critical(f"Payment required error (402) for {site_name}. Terminating immediately.")
-                print(f"\033[91m✗ Payment required error (402). Terminating immediately.\033[0m")
-                return False
-            elif ("RateLimitError" in msg or "RESOURCE_EXHAUSTED" in msg or "timed out" in msg or "Timeout" in msg):
-                retry_match = re.search(r"'retryDelay': '([0-9]+)s'", msg)
-                if retry_match:
-                    retry_delay = int(retry_match.group(1))
-                logger.warning(f"Retryable error (rate limit or timeout) for {site_name}. Retrying in {retry_delay} seconds... (attempt {attempt}/{max_retries})")
-                print(f"\033[93m⚠ Retryable error (rate limit or timeout). Retrying in {retry_delay} seconds... (attempt {attempt}/{max_retries})\033[0m")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
+    if extract_competitions:
+        print(f"\033[94mExtracting competitions from {site_name}...\033[0m")
+        competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], nation=nation, sub_url=sub_url)
+        if "error" in competition_data:
+            print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
+        else:
+            save_competitions_cache(site_name, competition_data)
+            comp_file_path = save_competitions_to_file(competition_data, site_name)
+            if comp_file_path.startswith("Error"):
+                print(f"\033[93m⚠ Failed to save competition data: {comp_file_path}\033[0m")
             else:
-                logger.critical(f"Non-retryable error encountered for {site_name}. Logging and continuing.")
-                print(f"\033[91m✗ Non-retryable error encountered. See log for details.\033[0m")
-                time.sleep(retry_delay)
-                retry_delay *= 2
-    else:
-        logger.error(f"Failed after maximum retries due to persistent errors for {site_name}.")
-        print(f"\033[91m✗ Failed after maximum retries due to persistent errors.\033[0m")
-        return False
+                total_competitions = competition_data.get('summary', {}).get('total_competitions', 0)
+                print(f"\033[92m✓ Competition data extracted and saved to: {comp_file_path}\033[0m")
+                print(f"\033[92m✓ Found {total_competitions} competitions\033[0m")
+                categories = competition_data.get('summary', {}).get('categories', {})
+                if categories:
+                    print(f"\033[94mCompetition categories:\033[0m")
+                    for category, count in categories.items():
+                        if count > 0:
+                            print(f"  - {category}: {count}")
+                display_competitions(competition_data, site_name)
+        return True
+
+    print(f"\033[93mNo extraction type specified. Use --extract-competitions or --extract-teams.\033[0m")
+    return False
 
 def main():
     r"""Main function to scrape websites based on user selection."""
@@ -922,6 +1115,7 @@ Examples:
   python scrape.py --clear-cache             # Clear all cache files
   python scrape.py --site worldfootball --clear-cache           # Clear cache for specific site
   python scrape.py --site worldfootball --enable-file-logging   # Scrape with file logging enabled
+  python scrape.py --site worldfootball --extract-teams --nation Germany --sub-url bundesliga --competition-id bundesliga-2023-2024   # Scrape and extract teams for a specific competition
         """
     )
     
@@ -941,6 +1135,12 @@ Examples:
         "--extract-competitions",
         action="store_true",
         help="Extract competition data using LLM after scraping"
+    )
+    
+    parser.add_argument(
+        "--extract-teams",
+        action="store_true",
+        help="Extract football team data using LLM after scraping. Requires --competition-id."
     )
     
     parser.add_argument(
@@ -974,6 +1174,19 @@ Examples:
         type=str,
         default=None,
         help="Sub-URL path to scrape (required with --nation)"
+    )
+    
+    parser.add_argument(
+        "--competition-id",
+        type=str,
+        default=None,
+        help="Competition ID (slug, URL, or identifier) to extract teams for. Required with --extract-teams."
+    )
+    
+    parser.add_argument(
+        "--force-fetch",
+        action="store_true",
+        help="Force fetch fresh data and skip all cache (HTML, competitions, teams)"
     )
     
     args = parser.parse_args()
@@ -1033,7 +1246,12 @@ Examples:
     if args.extract_competitions and not args.nation:
         print("\033[91mError: --nation is required when using --extract-competitions.\033[0m")
         sys.exit(1)
-    # If --nation is provided, --sub-url must also be provided
+    if args.extract_teams and not args.nation:
+        print("\033[91mError: --nation is required when using --extract-teams.\033[0m")
+        sys.exit(1)
+    if args.extract_teams and not args.competition_id:
+        print("\033[91mError: --competition-id is required when using --extract-teams.\033[0m")
+        sys.exit(1)
     if args.nation and not args.sub_url:
         print("\033[91mError: --sub-url is required when using --nation.\033[0m")
         sys.exit(1)
@@ -1055,7 +1273,7 @@ Examples:
             if args.cache_days is not None:
                 cache_days_obj["default"] = args.cache_days
                 cache_days_obj["competition"] = args.cache_days
-            success = scrape_site(site_name, info["url"], info["description"], cache_days_obj, args.extract_competitions, nation=args.nation, sub_url=args.sub_url)
+            success = scrape_site(site_name, info["url"], info["description"], cache_days_obj, args.extract_competitions, nation=args.nation, sub_url=args.sub_url, extract_teams=args.extract_teams, competition_id=args.competition_id, force_fetch=args.force_fetch)
             if success:
                 successful_scrapes += 1
             print(f"\033[94m{'='*50}\033[0m")
@@ -1075,7 +1293,7 @@ Examples:
             print(f"\033[94mCache override: Disabled\033[0m")
         else:
             print(f"\033[94mCache override: {args.cache_days} day{'s' if args.cache_days != 1 else ''}\033[0m")
-    success = scrape_site(args.site, url, description, cache_days_obj, args.extract_competitions, nation=args.nation, sub_url=args.sub_url)
+    success = scrape_site(args.site, url, description, cache_days_obj, args.extract_competitions, nation=args.nation, sub_url=args.sub_url, extract_teams=args.extract_teams, competition_id=args.competition_id, force_fetch=args.force_fetch)
     if success:
         print(f"\n\033[92m✓ Scraping completed successfully!\033[0m")
     else:
