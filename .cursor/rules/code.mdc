@@ -1,0 +1,10 @@
+---
+description: 
+globs: *.py
+alwaysApply: false
+---
+When implementing an extraction function:
+- Make sure the prompt template (the on defined in globals) use {{}} if provide example json outputs (to avoid clashing with python format)
+- Any html response should be cached (default 1 hour)
+- --force-fetch should always be supported
+- the output (extracted from the llm) must be saved to a json file in the data folder (adhering to the existing folder structure)

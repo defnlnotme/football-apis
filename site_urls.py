@@ -14,13 +14,13 @@ SITE_URLS = {
             "/continents/ofc",
         ],
         "teams": {
-            "competition": "/competition/{competition}",
-            "historical": "/teams/{team}/{year}/3",
-            "news": "/news/{team}/1", 
-            "appearances": "/team_performance/{team}/{competition}-{year_prev}-{year}",
-            "squad": "/teams/{team}/{year}/2",
-            "h2h": "/teams/{team}/11/",
-            "h2h-vs": "/teams/{team}/{vs_team}/11/"
+            "competition": "/competition/{competition_id}",
+            "historical": "/teams/{team_id}/{year}/3",
+            "news": "/news/{team_id}/1", 
+            "appearances": "/team_performance/{team_id}/{competition_id}-{year_prev}-{year}",
+            "squad": "/teams/{team_id}/{year}/2",
+            "h2h": "/teams/{team_id}/11/",
+            "h2h-vs": "/teams/{team_id}/{vs_team}/11/"
         }
     },
     "footystats": {
@@ -31,6 +31,9 @@ SITE_URLS = {
             "/{group}",
         ],
         "teams": {
+            "competition": "/{group}/{competition_id}",
+            "stats": "/{group}/{competition_id}",
+            "team-stats": "/clubs/{team_id}"
         }
     }
 } 
