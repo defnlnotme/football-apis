@@ -23,6 +23,8 @@ from camel.logger import set_log_level
 from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from owl.utils import DocumentProcessingToolkit
+from owl.utils.document_toolkit import DocumentProcessingToolkit, ScrapeOptions
+from camel.utils import retry_on_error
 import time
 import logging
 import traceback
@@ -47,7 +49,29 @@ MODEL_TYPES = [
 # Use the root logger for this script
 logger = logging.getLogger()
 
+@retry_on_error()
+def patched_extract_webpage_content(self, url: str) -> str:
+    api_key = os.getenv("FIRECRAWL_API_KEY")
+    from firecrawl import FirecrawlApp
+
+    # Initialize the FirecrawlApp with your API key
+    app = FirecrawlApp(api_key=api_key)
+
+    resp = app.crawl_url(
+        url, limit=1, scrape_options=ScrapeOptions(formats=["html"])
+    )
+    data = resp.data
+    logger.debug(f"Extractred data from {url}: {data}")
+    if len(data) == 0:
+        if resp.success:
+            return "No content found on the webpage."
+        else:
+            return "Error while crawling the webpage."
+
+    return str(data[0].html)
+
 TEAM_DATA_CACHE_TTL_SECONDS = 3600  # 1 hour
+
 
 def get_team_data_cache_path(data_dir: str, filename: str, category: str) -> str:
     return os.path.join(data_dir, f"{filename}_{category}.json")
@@ -511,6 +535,7 @@ def get_site_info(site_name: str) -> Tuple[bool, str, str, dict]:
     
     return False, "", "", {"default": 1}
 
+
 def extract_html_from_url(url: str) -> str:
     r"""Extract HTML content from a URL using DocumentProcessingToolkit.
 
@@ -530,6 +555,8 @@ def extract_html_from_url(url: str) -> str:
         
         # Initialize the DocumentProcessingToolkit
         doc_toolkit = DocumentProcessingToolkit(model=model)
+        # Patch the method after instantiation
+        doc_toolkit._extract_webpage_content = patched_extract_webpage_content.__get__(doc_toolkit, DocumentProcessingToolkit)
         
         logger.info(f"Extracting HTML from URL: {url}")
         
@@ -1118,37 +1145,67 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
     print(f"\033[93mNo extraction type specified. Use --extract-competitions or --extract-teams.\033[0m")
     return False
 
+def get_team_html_cache_path(site_name: str, team_id: str, data_type: str, year: str = "", competition_id: str = "", vs_team: str = "") -> pathlib.Path:
+    """Get the cache path for a team's HTML file for a given data type."""
+    cache_dir = get_cache_dir(site_name)
+    fname = f"{team_id}_{data_type}"
+    if year:
+        fname += f"_{year}"
+    if competition_id:
+        fname += f"_{competition_id}"
+    if vs_team:
+        fname += f"_vs_{vs_team}"
+    fname += ".html"
+    return cache_dir / fname
+
+TEAM_HTML_CACHE_TTL_SECONDS = 3600  # 1 hour
+
+def is_team_html_cache_valid(cache_path: pathlib.Path) -> bool:
+    if not cache_path.exists():
+        return False
+    file_age = time.time() - cache_path.stat().st_mtime
+    return file_age < TEAM_HTML_CACHE_TTL_SECONDS
+
+# --- Caching for extract_team_historical ---
 def extract_team_historical(site_name: str, team_id: str, year: str) -> str:
-    """Extract the historical page for a team for a given year, if the site provides a static link."""
     teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
     pattern = teams_info.get("historical")
     if not pattern:
         raise ValueError(f"No historical pattern for site {site_name}")
     sub_path = pattern.replace("{team}", team_id).replace("{year}", year)
     url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team_id, "historical", year=year)
+    if is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
     html_content = extract_html_from_url(url)
-    # Optionally cache here if desired
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
     return html_content
 
+# --- Caching for extract_team_news ---
 def extract_team_news(site_name: str, team_id: str) -> str:
-    """Extract the news page for a team, if the site provides a static link."""
     teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
     pattern = teams_info.get("news")
     if not pattern:
         raise ValueError(f"No news pattern for site {site_name}")
     sub_path = pattern.replace("{team}", team_id)
     url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team_id, "news")
+    if is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
     html_content = extract_html_from_url(url)
-    # Optionally cache here if desired
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
     return html_content
 
+# --- Caching for extract_team_appearances ---
 def extract_team_appearances(site_name: str, team_id: str, competition_id: str, year: str) -> str:
-    """Extract the appearances page for a team in a competition, if the site provides a static link."""
     teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
     pattern = teams_info.get("appearances")
     if not pattern:
         raise ValueError(f"No appearances pattern for site {site_name}")
-    # Handle {year_prev} and {year} placeholders if present
     if "{year_prev}" in pattern or "{year}" in pattern:
         year_int = int(year)
         year_prev = str(year_int - 1)
@@ -1156,20 +1213,64 @@ def extract_team_appearances(site_name: str, team_id: str, competition_id: str, 
     else:
         sub_path = pattern.replace("{team}", team_id).replace("{competition}", competition_id)
     url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team_id, "appearances", year=year, competition_id=competition_id)
+    if is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
     html_content = extract_html_from_url(url)
-    # Optionally cache here if desired
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
     return html_content
 
+# --- Caching for extract_team_squad ---
 def extract_team_squad(site_name: str, team_id: str, year: str) -> str:
-    """Extract the squad page for a team for a given year, if the site provides a static link."""
     teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
     pattern = teams_info.get("squad")
     if not pattern:
         raise ValueError(f"No squad pattern for site {site_name}")
     sub_path = pattern.replace("{team}", team_id).replace("{year}", year)
     url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team_id, "squad", year=year)
+    if is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
     html_content = extract_html_from_url(url)
-    # Optionally cache here if desired
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    return html_content
+
+# --- Caching for extract_team_h2h ---
+def extract_team_h2h(site_name: str, team_id: str) -> str:
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("h2h")
+    if not pattern:
+        raise ValueError(f"No h2h pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team_id, "h2h")
+    if is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    html_content = extract_html_from_url(url)
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    return html_content
+
+# --- Caching for extract_team_h2h_vs ---
+def extract_team_h2h_vs(site_name: str, team_id: str, vs_team: str) -> str:
+    teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
+    pattern = teams_info.get("h2h-vs")
+    if not pattern:
+        raise ValueError(f"No h2h-vs pattern for site {site_name}")
+    sub_path = pattern.replace("{team}", team_id).replace("{vs_team}", vs_team)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team_id, "h2h-vs", vs_team=vs_team)
+    if is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    html_content = extract_html_from_url(url)
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
     return html_content
 
 TEAM_DATA_EXTRACTION_PROMPT = """
@@ -1185,19 +1286,98 @@ The possible data types and their meanings are:
 - h2h: Extract a summary of all opponents that the team has played against. For each opponent, include the opponent name, total matches, wins, draws, losses, goals for, goals against, and any other available aggregate stats. Do NOT include match-by-match details here.
 - h2h-vs: Extract detailed head-to-head data for matches between the team and a single specified opponent. For each match, include the date, competition, round, venue, score, and any other available details. If a date range is specified, only include matches within that range. Also provide aggregate stats (total matches, wins, draws, losses, goals for/against) for this matchup and time range.
 
-IMPORTANT: Do NOT include the raw_html field in the output for any category.
-
 For the provided HTML, extract the relevant information for the corresponding data type and organize it in a JSON object as shown below. Only include a section if the corresponding HTML content is provided.
 
 Return ONLY a valid JSON object as your output, with no extra text or explanation.
+
+Example output for historical:
+{{
+  "team_id": "ac-milan",
+  "historical": [
+    {{
+      "round": "Week",
+      "date": "31/05/2024",
+      "time": "12:10",
+      "venue": "N",
+      "opponent": "AS Roma",
+      "result": "2:5 (1:2)",
+      "competition": "Friendlies Clubs 2024"
+    }}
+    // ... more matches ...
+  ]
+}}
+
+Example output for squad:
+{{
+  "team_id": "ac-milan",
+  "squad": {{
+    "year": "2024/2025",
+    "players": [
+      {{
+        "name": "Mike Maignan",
+        "position": "Goalkeeper",
+        "number": "16",
+        "nationality": "France",
+        "dob": "03/07/1995"
+      }}
+      // ... more players ...
+    ]
+  }}
+}}
+
+Example output for news:
+{{
+  "team_id": "ac-milan",
+  "news": {{
+    "articles": [
+      {{
+        "title": "AC Milan turn to old boy Allegri in hour of need",
+        "url": "https://www.worldfootball.net/news/_n8187906_/ac-milan-turn-to-old-boy-allegri-in-hour-of-need/",
+        "date": "30.05.2025 13:03",
+        "summary": "Massimiliano Allegri returned to AC Milan on Friday as the ailing seven-time European champions try once again to rebuild following an awful season which left one of the world's biggest clubs with no European football next term...."
+      }}
+      // ... more articles ...
+    ]
+  }}
+}}
+
+Example output for appearances:
+{{
+  "team_id": "ac-milan",
+  "appearances": {{
+    "competition": "ita-serie-a",
+    "year": "2024",
+    "players": [
+      {{
+        "name": "Mike Maignan",
+        "time_played": "3295'",
+        "matches": "37",
+        "goals": "-",
+        "assists": "-",
+        "yellow_cards": "1",
+        "red_cards": "-",
+        "starts": "37",
+        "subs": "-"
+      }}
+      // ... more players ...
+    ]
+  }}
+}}
 
 Example output for h2h:
 {{
   "team_id": "ac-milan",
   "h2h": {{
     "opponents": [
-      {{"opponent": "Inter", "matches": 50, "wins": 20, "draws": 15, "losses": 15, "goals_for": 60, "goals_against": 55}},
-      {{"opponent": "Juventus", "matches": 40, "wins": 10, "draws": 10, "losses": 20, "goals_for": 35, "goals_against": 50}}
+      {{
+        "opponent": "Boca Juniors",
+        "matches": 2,
+        "wins": 1,
+        "draws": 1,
+        "losses": 0,
+        "goals_for": 5,
+        "goals_against": 3
+      }}
       // ... more opponents ...
     ]
   }}
@@ -1207,12 +1387,26 @@ Example output for h2h-vs:
 {{
   "team_id": "ac-milan",
   "h2h_vs": {{
-    "opponent": "Inter",
-    "date_from": "2021-01-01",
-    "date_to": "2024-06-30",
-    "aggregate": {{"matches": 10, "wins": 3, "draws": 2, "losses": 5, "goals_for": 12, "goals_against": 18}},
+    "opponent": "Sampdoria",
+    "date_from": null,
+    "date_to": "2025-06-23",
+    "aggregate": {{
+      "matches": 143,
+      "wins": 78,
+      "draws": 33,
+      "losses": 32,
+      "goals_for": 241,
+      "goals_against": 131
+    }},
     "matches": [
-      {{"date": "2023-05-01", "competition": "Serie A", "round": "34", "venue": "San Siro", "score": "2-1", "result": "win"}},
+      {{
+        "date": "1990-XX-XX",
+        "competition": "UEFA Super Cup",
+        "round": "Final",
+        "venue": "home",
+        "score": "2:0",
+        "result": "win"
+      }}
       // ... more matches ...
     ]
   }}
@@ -1221,11 +1415,18 @@ Example output for h2h-vs:
 If the data cannot be extracted, return an empty object for the relevant section.
 """
 
-def create_team_data_extraction_agent(team_id: str) -> ChatAgent:
-    """Create a CAMEL agent for extracting structured team data from HTML content, formatting the prompt with the team_id."""
+def create_team_data_extraction_agent(team_id: str, model_type: str = "gemini-2.5-flash-lite-preview-06-17") -> ChatAgent:
+    """Create a CAMEL agent for extracting structured team data from HTML content, formatting the prompt with the team_id.
+    
+    Args:
+        team_id (str): The team ID to extract data for.
+        model_type (str): The model type to use for extraction. Defaults to "gemini-2.5-flash-lite-preview-06-17".
+    Returns:
+        ChatAgent: The configured team data extraction agent
+    """
     model = ModelFactory.create(
         model_platform=ModelPlatformType.GEMINI,
-        model_type="gemini-2.5-flash-lite-preview-06-17",
+        model_type=model_type,
         model_config_dict={"temperature": 1/3},
     )
     system_prompt = TEAM_DATA_EXTRACTION_PROMPT.format(team_id=team_id)
