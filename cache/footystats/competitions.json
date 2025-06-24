@@ -1,0 +1,331 @@
+{
+  "competitions": [
+    {
+      "name": "Serie A",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-a",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Supercoppa Italiana",
+      "type": "cup",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/supercoppa-italiana",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie B",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-b",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Primavera Cup",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/primavera-cup",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Coppa Italia",
+      "type": "cup",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/coppa-italia",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie C",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-c",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie C Group A",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-c-group-a",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie C Playoffs",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-c-playoffs",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie C Group B",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-c-group-b",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie C Group C",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-c-group-c",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group H",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-h",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D PlayOffs",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-playoffs",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group D",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-d",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Coppa Italia Women",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/coppa-italia-women",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group I",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-i",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group G",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-g",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group E",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-e",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group F",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-f",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group B",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-b",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group C",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-c",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie D Group A",
+      "type": "league",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-d-group-a",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Coppa Italia Serie D",
+      "type": "cup",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/coppa-italia-serie-d",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Coppa Italia Serie C",
+      "type": "cup",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/coppa-italia-serie-c",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Super Cup Women",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/super-cup-women",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Womens Playoffs 1 2",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/womens-playoffs-1-2",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie A Women",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-a-women",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Serie B Women",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/serie-b-women",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Primavera 2 Women",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/primavera-2-women",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Primavera Women",
+      "type": "womens",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/primavera-women",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Campionato Primavera 1",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/campionato-primavera-1",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Campionato Primavera 2",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/campionato-primavera-2",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Campionato Primavera 3",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/campionato-primavera-3",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Campionato Primavera 4",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/campionato-primavera-4",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Viareggio Cup",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/viareggio-cup",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    },
+    {
+      "name": "Primavera Supercup",
+      "type": "youth",
+      "nation": "Italy",
+      "season": null,
+      "url": "https://footystats.org/italy/primavera-supercup",
+      "description": null,
+      "html_url": "https://footystats.org/italy"
+    }
+  ],
+  "summary": {
+    "total_competitions": 35,
+    "categories": {
+      "leagues": 17,
+      "tournaments": 0,
+      "cups": 4,
+      "international": 0,
+      "regional": 0,
+      "youth": 7,
+      "womens": 7
+    }
+  }
+}
