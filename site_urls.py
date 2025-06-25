@@ -3,51 +3,47 @@ SITE_URLS = {
         "url": "https://www.worldfootball.net/",
         "description": "World Football - Football statistics and information",
         "cache_days": {"default": 1, "competition": 1},
-        "competition": [
-            "/continents/fifa",
-            "/continents/uefa",
-            "/continents/conmebol",
-            "/continents/caf",
-            "/continents/caf",
-            "/continents/concacaf",
-            "/continents/afc",
-            "/continents/ofc",
-        ],
         "paths": {
-            "competition": "/competition/{competition}",
+            "competitions": [
+                "/continents/fifa",
+                "/continents/uefa",
+                "/continents/conmebol",
+                "/continents/caf",
+                "/continents/caf",
+                "/continents/concacaf",
+                "/continents/afc",
+                "/continents/ofc",
+            ],
+            "competition-stats": "/competition/{competition}",
             "historical": "/teams/{team}/{year}/3",
-            "news": "/news/{team}/1", 
+            "news": "/news/{team}/1",
             "appearances": "/team_performance/{team}/{competition}-{year_prev}-{year}",
             "squad": "/teams/{team}/{year}/2",
             "h2h": "/teams/{team}/11/",
-            "h2h-vs": "/teams/{team}/{vs_team}/11/"
-        }
+            "h2h-vs": "/teams/{team}/{vs_team}/11/",
+        },
     },
     "footystats": {
         "url": "https://footystats.org",
         "description": "FootyStats - Football statistics, analytics, and data",
         "cache_days": {"default": 1, "competition": 1},
-        "competition": [
-            "/{group}",
-        ],
         "paths": {
-            "competition": "/{group}/{competition}",
-            "stats": "/{group}/{competition}",
-            "team-stats": "/clubs/{team}"
-        }
+            "competitions": "/{group}",
+            "competition-teams": "/{group}/{competition}",
+            "competition-stats": "/{group}/{competition}",
+            "team-stats": "/clubs/{team}",
+        },
     },
     "oddsportal": {
         "url": "https://centroquote.it",
         "description": "CentroQuote - Comparatore quote scommesse sportive",
         "cache_days": {"default": 1, "competition": 1},
-        "competition": [
-            "/football",
-        ],
         "paths": {
+            "competitions": "/football",
             "odds": "/football/{group}/{competition}",
             "outrights": "/football/{group}/{competition}/outrights/",
-            "odds-historical":  "/football/{group}/{competition}-{year_prev}-{year}/results/",
-            "standings": "/football/{group}/{competition}-{year_prev}-{year}/standings/"
-        }
-    }
-} 
+            "odds-historical": "/football/{group}/{competition}-{year_prev}-{year}/results/",
+            "standings": "/football/{group}/{competition}-{year_prev}-{year}/standings/",
+        },
+    },
+}
