@@ -1,0 +1,115 @@
+{
+  "competitions": [
+    {
+      "name": "Serie A",
+      "type": "league",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/serie-a/",
+      "description": "",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Serie B",
+      "type": "league",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/serie-b/",
+      "description": "",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Serie C",
+      "type": "league",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/serie-c/",
+      "description": "",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Coppa Italia",
+      "type": "cup",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/coppa-italia/",
+      "description": "",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Super Cup",
+      "type": "cup",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/super-cup/",
+      "description": "",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Serie A Women",
+      "type": "womens",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/serie-a-women/",
+      "description": "Women's top league",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Primavera 1",
+      "type": "youth",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/primavera-1/",
+      "description": "Youth league",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Primavera 2",
+      "type": "youth",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/primavera-2/",
+      "description": "Youth league",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Coppa Italia Primavera",
+      "type": "youth",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/coppa-italia-primavera/",
+      "description": "Youth cup competition",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Supercoppa Primavera",
+      "type": "youth",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/supercoppa-primavera/",
+      "description": "Youth super cup competition",
+      "html_url": "https://centroquote.it/football"
+    },
+    {
+      "name": "Campionato Nazionale Primavera Women",
+      "type": "youth",
+      "group": "italy",
+      "season": "",
+      "url": "https://www.oddsportal.com/soccer/italy/campionato-nazionale-primavera-women/",
+      "description": "National Youth Women's League",
+      "html_url": "https://centroquote.it/football"
+    }
+  ],
+  "summary": {
+    "total_competitions": 11,
+    "categories": {
+      "leagues": 3,
+      "tournaments": 0,
+      "cups": 2,
+      "international": 0,
+      "regional": 0,
+      "youth": 5,
+      "womens": 1
+    }
+  }
+}

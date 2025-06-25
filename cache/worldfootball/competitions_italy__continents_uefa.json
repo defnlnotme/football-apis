@@ -65,7 +65,7 @@
     },
     {
       "name": "Serie C Playoff",
-      "type": "tournament",
+      "type": "cup",
       "group": "Italy",
       "season": null,
       "url": "https://www.worldfootball.net/competition/ita-serie-c-playoff/",
@@ -74,7 +74,7 @@
     },
     {
       "name": "Serie C Playout",
-      "type": "tournament",
+      "type": "cup",
       "group": "Italy",
       "season": null,
       "url": "https://www.worldfootball.net/competition/ita-serie-c-playout/",
@@ -182,7 +182,7 @@
     },
     {
       "name": "Serie D Playoff",
-      "type": "tournament",
+      "type": "cup",
       "group": "Italy",
       "season": null,
       "url": "https://www.worldfootball.net/competition/ita-serie-d-playoff/",
@@ -191,7 +191,7 @@
     },
     {
       "name": "Serie D Scudetto",
-      "type": "tournament",
+      "type": "cup",
       "group": "Italy",
       "season": null,
       "url": "https://www.worldfootball.net/competition/ita-serie-d-scudetto/",
@@ -346,12 +346,12 @@
   "summary": {
     "total_competitions": 38,
     "categories": {
-      "leagues": 17,
-      "tournaments": 4,
-      "cups": 5,
+      "leagues": 16,
+      "tournaments": 0,
+      "cups": 11,
       "international": 0,
       "regional": 0,
-      "youth": 8,
+      "youth": 7,
       "womens": 4
     }
   }

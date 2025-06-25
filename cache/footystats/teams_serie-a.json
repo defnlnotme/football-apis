@@ -1,0 +1,153 @@
+{
+  "teams": [
+    {
+      "name": "SSC Napoli",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/ssc-napoli-74",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "FC Internazionale Milano",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/fc-internazionale-milano-470",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Atalanta Bergamasca Calcio",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/atalanta-bergamasca-calcio-464",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Juventus FC",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/juventus-fc-90",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "AS Roma",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/as-roma-113",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "ACF Fiorentina",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/acf-fiorentina-471",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "SS Lazio",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/ss-lazio-463",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "AC Milan",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/ac-milan-461",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Bologna FC 1909",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/bologna-fc-1909-467",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Calcio Como",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/calcio-como-518",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Torino FC",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/torino-fc-456",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Udinese Calcio",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/udinese-calcio-466",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Genoa CFC",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/genoa-cfc-460",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Hellas Verona FC",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/hellas-verona-fc-473",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Parma Calcio 1913",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/parma-calcio-1913-476",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Cagliari Calcio",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/cagliari-calcio-455",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "US Lecce",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/us-lecce-2330",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Empoli FC",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/empoli-fc-459",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "Venezia FC",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/venezia-fc-1047",
+      "description": "Italian Serie A club"
+    },
+    {
+      "name": "SS Monza 1912",
+      "type": "club",
+      "competition": "serie-a",
+      "url": "https://footystats.org/clubs/ss-monza-1912-2356",
+      "description": "Italian Serie A club"
+    }
+  ],
+  "summary": {
+    "total_teams": 20,
+    "categories": {
+      "club": 20,
+      "national": 0,
+      "youth": 0,
+      "women": 0
+    }
+  }
+}
