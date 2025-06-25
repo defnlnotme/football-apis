@@ -13,7 +13,7 @@ SITE_URLS = {
             "/continents/afc",
             "/continents/ofc",
         ],
-        "teams": {
+        "paths": {
             "competition": "/competition/{competition}",
             "historical": "/teams/{team}/{year}/3",
             "news": "/news/{team}/1", 
@@ -30,7 +30,7 @@ SITE_URLS = {
         "competition": [
             "/{group}",
         ],
-        "teams": {
+        "paths": {
             "competition": "/{group}/{competition}",
             "stats": "/{group}/{competition}",
             "team-stats": "/clubs/{team}"
@@ -41,12 +41,13 @@ SITE_URLS = {
         "description": "CentroQuote - Comparatore quote scommesse sportive",
         "cache_days": {"default": 1, "competition": 1},
         "competition": [
-            "/calcio/{competition}",
-            "/{sport}/{competition}"
+            "/football",
         ],
-        "teams": {
-            "competition": "/calcio/{competition}",
-            "team-stats": "/squadra/{team}"
+        "paths": {
+            "odds": "/football/{group}/{competition}",
+            "outrights": "/football/{group}/{competition}/outrights/",
+            "odds-historical":  "/football/{group}/{competition}-{year_prev}-{year}/results/",
+            "standings": "/football/{group}/{competition}-{year_prev}-{year}/standings/"
         }
     }
 } 

@@ -34,6 +34,7 @@ from site_urls import SITE_URLS
 from urllib.parse import urljoin
 import datetime
 import os
+import pprint
 
 base_dir = pathlib.Path(__file__).parent
 env_path = base_dir / ".envrc"
@@ -461,13 +462,12 @@ Please provide a comprehensive list of all competitions found, organized by type
             "error": f"Extraction failed: {str(e)}"
         }
 
-def save_competitions_to_file(competition_data: Dict[str, Any], site_name: str, sub_url: Optional[str] = None) -> str:
+def save_competitions_to_file(competition_data: Dict[str, Any], site_name: str, path: Optional[str] = None) -> str:
     """Save extracted competition data to a JSON file in the cache folder.
-    
     Args:
         competition_data (Dict[str, Any]): The extracted competition data
         site_name (str): The name of the site
-        sub_url (Optional[str]): The sub-URL or path for this extraction (for filename)
+        path (Optional[str]): The path key or sub-URL for this extraction (for filename)
     Returns:
         str: The path to the saved file
     """
@@ -475,9 +475,9 @@ def save_competitions_to_file(competition_data: Dict[str, Any], site_name: str, 
         # Create a safe filename
         safe_name = re.sub(r'[^\w\-_.]', '_', site_name)
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        if sub_url:
+        if path:
             # Replace '/' with '_' and strip leading/trailing underscores
-            slug = sub_url.replace('/', '_').strip('_')
+            slug = path.replace('/', '_').strip('_')
             filename = f"{safe_name}_competitions_{slug}_{timestamp}.json"
         else:
             filename = f"{safe_name}_competitions_{timestamp}.json"
@@ -577,13 +577,13 @@ def extract_html_from_url(url: str) -> str:
         logger.debug(traceback.format_exc())
         return f"Exception: {str(e)}"
 
-def save_html_to_file(html_content: str, site_name: str, sub_url: Optional[str] = None) -> str:
+def save_html_to_file(html_content: str, site_name: str, path: Optional[str] = None) -> str:
     r"""Save HTML content to a file in the cache/<site>/ folder.
 
     Args:
         html_content (str): The HTML content to save.
         site_name (str): The name of the site for the filename.
-        sub_url (Optional[str]): The sub-URL or path for this extraction (for filename)
+        path (Optional[str]): The path key or sub-URL for this extraction (for filename)
 
     Returns:
         str: The path to the saved file.
@@ -592,8 +592,8 @@ def save_html_to_file(html_content: str, site_name: str, sub_url: Optional[str] 
         # Create a safe filename
         safe_name = re.sub(r'[^\w\-_.]', '_', site_name)
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        if sub_url:
-            slug = sub_url.replace('/', '_').strip('_')
+        if path:
+            slug = path.replace('/', '_').strip('_')
             filename = f"{safe_name}_{slug}_{timestamp}.html"
         else:
             filename = f"{safe_name}_{timestamp}.html"
@@ -697,9 +697,9 @@ def find_cached_files_by_regex(site_name: str, pattern: str) -> list:
     regex = re.compile(pattern)
     return [f for f in cache_dir.iterdir() if f.is_file() and regex.search(f.name)]
 
-def extract_all_competitions(site_name: str, site_info: dict, group: Optional[str] = None, sub_url: Optional[str] = None, force_fetch: bool = False) -> dict:
+def extract_all_competitions(site_name: str, site_info: dict, group: Optional[str] = None, path: Optional[str] = None, force_fetch: bool = False) -> dict:
     """Extract competitions from all URLs in the site's competition list, merging results. If competitions.json exists, load and return its contents instead of fetching again.
-    If group and sub_url are specified, only process and cache that sub_url."""
+    If group and path are specified, only process and cache that path."""
     import os
     cache_file = get_competitions_cache_file_path(site_name)
     if cache_file.exists() and not force_fetch:
@@ -710,18 +710,18 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
             logger.error(f"Failed to load competitions.json for {site_name}: {str(e)}. Refetching...")
     base_url = site_info["url"]
     comp_urls = site_info.get("competition", [base_url])
-    if group and sub_url:
-        # If sub_url is a regex, match all comp_urls that match the pattern
+    if group and path:
+        # If path is a regex, match all comp_urls that match the pattern
         try:
-            regex = re.compile(sub_url)
+            regex = re.compile(path)
             matched_urls = [u for u in comp_urls if regex.search(u)]
             if not matched_urls:
-                logger.warning(f"No sub-URLs matched the regex: {sub_url}")
+                logger.warning(f"No paths matched the regex: {path}")
             comp_urls = matched_urls
         except re.error as e:
-            logger.error(f"Invalid regex for sub_url: {sub_url} ({e})")
+            logger.error(f"Invalid regex for path: {path} ({e})")
             comp_urls = []
-    teams_urls = site_info.get("teams", [base_url])  # Added support for 'teams' group
+    teams_urls = site_info.get("paths", [base_url])  # Added support for 'paths' group
     all_competitions = []
     summary = {
         "total_competitions": 0,
@@ -749,7 +749,7 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
             url = urljoin(base_url, comp_url)
         else:
             url = comp_url
-        # Try to find a cached HTML file for this sub-URL
+        # Try to find a cached HTML file for this path
         slug = comp_url.replace('/', '_').strip('_')
         pattern = rf"{re.escape(slug)}.*\.html$"
         cached_files = find_cached_files_by_regex(site_name, pattern)
@@ -761,8 +761,8 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
             logger.info(f"Loaded HTML from cache: {cached_file}")
         else:
             html_content = extract_html_from_url(url)
-            # Save HTML for each sub-url
-            save_html_to_file(html_content, site_name, sub_url=comp_url)
+            # Save HTML for each path
+            save_html_to_file(html_content, site_name, path=comp_url)
         if html_content.startswith("Error:") or html_content.startswith("Exception:"):
             errors.append(f"{url}: {html_content}")
             continue
@@ -770,8 +770,8 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
         # Add html_url to each competition
         for c in comp_data.get("competitions", []):
             c["html_url"] = url
-        # Save each sub-url's competitions file
-        save_competitions_to_file(comp_data, site_name, sub_url=comp_url)
+        # Save each path's competitions file
+        save_competitions_to_file(comp_data, site_name, path=comp_url)
         comps = comp_data.get("competitions", [])
         for c in comps:
             key = (c.get("name"), c.get("type"), c.get("group"), c.get("season"))
@@ -1070,7 +1070,7 @@ def save_teams_cache(site_name: str, data: dict, competition: Optional[str] = No
         logger.error(f"Failed to cache teams for {site_name} (competition={competition}): {str(e)}")
         return False
 
-def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict = {"default": 1}, extract_competitions: bool = False, group: Optional[str] = None, sub_url: Optional[str] = None, extract_teams: bool = False, competition: Optional[str] = None, force_fetch: bool = False) -> bool:
+def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict = {"default": 1}, extract_competitions: bool = False, group: Optional[str] = None, path: Optional[str] = None, extract_teams: bool = False, competition: Optional[str] = None, force_fetch: bool = False) -> bool:
     """Scrape a specific site and optionally extract competitions or teams. If extracting teams, a competition ID must be provided.
     Args:
         site_name (str): The name of the site.
@@ -1079,7 +1079,7 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
         cache_days_obj (dict): Number of days to cache content (0 = no caching).
         extract_competitions (bool): Whether to extract competitions using LLM.
         group (Optional[str]): Group to filter competitions/teams by.
-        sub_url (Optional[str]): Sub-URL path to scrape (required with --group).
+        path (Optional[str]): Path key or sub-URL to scrape (required with --group).
         extract_teams (bool): Whether to extract teams using LLM.
         competition (Optional[str]): Competition ID (slug, URL, or identifier) to extract teams for. Required with --extract-teams.
         force_fetch (bool): If True, skip all cache and always fetch fresh data.
@@ -1105,19 +1105,28 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
     # Only handle competitions or teams, never fetch the homepage by default
     if extract_teams:
         print(f"\033[94mExtracting teams from {site_name} (competition ID: {competition})...\033[0m")
-        teams_info = SITE_URLS.get(site_name, {}).get("teams", {})
-        competition_pattern = teams_info.get("competition")
-        # Use competition as default for sub_url if not provided
-        effective_sub_url = sub_url if sub_url else competition
-        # Format competition_pattern with group if needed
-        if competition_pattern and competition:
-            pattern = competition_pattern
-            if '{group}' in pattern:
-                pattern = pattern.replace('{group}', group or '')
-            sub_path = pattern.replace("{competition}", competition)
-            team_url = urljoin(url, sub_path)
+        paths_info = SITE_URLS.get(site_name, {}).get("paths", {})
+        competition_pattern = paths_info.get("competition")
+        # Use competition as default for path if not provided
+        effective_path = path if path else competition
+        # If path does not start with a slash, treat it as a key in paths_info
+        if effective_path and not effective_path.startswith("/"):
+            if effective_path in paths_info:
+                pattern = paths_info[effective_path]
+                sub_path = pattern.replace("{competition}", competition or "")
+                team_url = urljoin(url, sub_path)
+            else:
+                team_url = competition if competition and competition.startswith('http') else urljoin(url, competition or "")
         else:
-            team_url = competition if competition and competition.startswith('http') else urljoin(url, competition or "")
+            # Format competition_pattern with group if needed
+            if competition_pattern and competition:
+                pattern = competition_pattern
+                if '{group}' in pattern:
+                    pattern = pattern.replace('{group}', group or '')
+                sub_path = pattern.replace("{competition}", competition)
+                team_url = urljoin(url, sub_path)
+            else:
+                team_url = competition if competition and competition.startswith('http') else urljoin(url, competition or "")
         # Check for cached competition HTML page, unless force_fetch is True
         cache_dir = get_cache_dir(site_name)
         safe_competition = re.sub(r'[^\w\-_.]', '_', competition or "competition")
@@ -1138,7 +1147,7 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
 
     if extract_competitions:
         print(f"\033[94mExtracting competitions from {site_name}...\033[0m")
-        competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], group=group, sub_url=sub_url, force_fetch=force_fetch)
+        competition_data = extract_all_competitions(site_name, SITE_URLS[site_name], group=group, path=path, force_fetch=force_fetch)
         if "error" in competition_data:
             print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
         else:
@@ -1639,13 +1648,13 @@ Capabilities:
 Examples:
   python scrape.py --list
   python scrape.py --site worldfootball --extract-competitions --group Italy --sub-url ita-serie-a
-  python scrape.py --site worldfootball --extract-teams --group Italy --sub-url ita-serie-a --competition-id ita-serie-a
-  python scrape.py --site worldfootball --extract-team-data all --team-id ac-milan --year 2023 --competition-id ita-serie-a
-  python scrape.py --site worldfootball --extract-team-data historical,news --team-id ac-milan --year 2023
-  python scrape.py --site worldfootball --extract-team-data appearances --team-id ac-milan --competition-id ita-serie-a
-  python scrape.py --site worldfootball --extract-team-data squad --team-id ac-milan --year 2023
-  python scrape.py --site worldfootball --extract-team-data h2h --team-id ac-milan
-  python scrape.py --site worldfootball --extract-team-data h2h-vs --team-id ac-milan --vs-team inter --date-from 2021 --date-to 2024
+  python scrape.py --site worldfootball --extract-teams --group Italy --sub-url ita-serie-a --competition ita-serie-a
+  python scrape.py --site worldfootball --extract-team-data all --team ac-milan --year 2023 --competition ita-serie-a
+  python scrape.py --site worldfootball --extract-team-data historical,news --team ac-milan --year 2023
+  python scrape.py --site worldfootball --extract-team-data appearances --team ac-milan --competition ita-serie-a
+  python scrape.py --site worldfootball --extract-team-data squad --team ac-milan --year 2023
+  python scrape.py --site worldfootball --extract-team-data h2h --team ac-milan
+  python scrape.py --site worldfootball --extract-team-data h2h-vs --team ac-milan --vs-team inter --date-from 2021 --date-to 2024
   python scrape.py --clear-cache
   python scrape.py --site worldfootball --clear-cache
   python scrape.py --site worldfootball --enable-file-logging
@@ -1675,7 +1684,7 @@ For more details, see the README or function docstrings.
     parser.add_argument(
         "--extract-teams",
         action="store_true",
-        help="Extract football team data using LLM after scraping. Requires --group, --sub-url, and --competition-id. Results are structured and saved to cache."
+        help="Extract football team data using LLM after scraping. Requires --group, --sub-url, and --competition. Results are structured and saved to cache."
     )
     
     parser.add_argument(
@@ -1705,14 +1714,14 @@ For more details, see the README or function docstrings.
     )
     
     parser.add_argument(
-        "--sub-url",
+        "--path",
         type=str,
         default=None,
-        help="Sub-URL path or slug to scrape (required with --group). Used to target a specific competition or league page."
+        help="Path key or sub-URL to scrape (required with --group). Used to target a specific competition, league, or team page. If it does not start with a slash, it is treated as a key in the site's paths group."
     )
     
     parser.add_argument(
-        "--competition-id",
+        "--competition",
         type=str,
         default=None,
         help="Competition ID (slug, URL, or identifier) to extract teams for. Required with --extract-teams and for some team data extractions."
@@ -1728,11 +1737,11 @@ For more details, see the README or function docstrings.
         "--extract-team-data",
         type=str,
         default=None,
-        help="Comma-separated list of team data to extract: historical,news,appearances,squad,h2h,h2h-vs, or 'all' for all. Requires --site and --team-id. --year and --competition-id may be required for some types. h2h-vs requires --vs-team. Optionally use --date-from and --date-to for h2h-vs."
+        help="Comma-separated list of team data to extract: historical,news,appearances,squad,h2h,h2h-vs, or 'all' for all. Requires --site and --team. --year and --competition may be required for some types. h2h-vs requires --vs-team. Optionally use --date-from and --date-to for h2h-vs."
     )
     
     parser.add_argument(
-        "--team-id",
+        "--team",
         type=str,
         default=None,
         help="Team ID or slug for team-specific fetches (required for --extract-team-data)."
@@ -1784,7 +1793,46 @@ For more details, see the README or function docstrings.
         help="Extract all teams' statistics for a competition as structured JSON."
     )
 
+    parser.add_argument(
+        "--list-sites",
+        action="store_true",
+        help="Print the SITE_URLS dictionary as formatted JSON and exit."
+    )
+
     args = parser.parse_args()
+
+    # Handle --list-sites argument
+    if getattr(args, "list_sites", False):
+        # Custom pretty printer for SITE_URLS with colors and icons
+        ICON_SITE = "\u26BD"      # Soccer ball for site name
+        ICON_LABEL = "\U0001F3F7" # Label/tag for all list entries
+        ICON_URL = "\U0001F310"   # Globe
+        ICON_CACHE = "\U0001F4C5" # Calendar
+        COLOR_SITE = "\033[96m"
+        COLOR_RESET = "\033[0m"
+        COLOR_URL = "\033[94m"
+        COLOR_DESC = "\033[92m"
+        COLOR_CACHE = "\033[93m"
+        COLOR_PATTERN = "\033[95m"
+        for name, info in SITE_URLS.items():
+            print(f"{COLOR_SITE}{ICON_SITE} {name}{COLOR_RESET}")
+            print(f"  {COLOR_DESC}{info.get('description', '')}{COLOR_RESET}")
+            print(f"  {COLOR_URL}{ICON_URL} {info.get('url', '')}{COLOR_RESET}")
+            cache_days_obj = info.get('cache_days', {'default': 1})
+            cache_days = cache_days_obj.get('default', 1)
+            print(f"  {COLOR_CACHE}{ICON_CACHE} Cache: {cache_days} day{'s' if cache_days != 1 else ''}{COLOR_RESET}")
+            # Competitions
+            if 'competition' in info:
+                print(f"  Competitions:")
+                for c in info['competition']:
+                    print(f"    {COLOR_PATTERN}{ICON_LABEL}  {c}{COLOR_RESET}")
+            # Teams
+            if 'teams' in info:
+                print(f"  Teams:")
+                for k, v in info['teams'].items():
+                    print(f"    {COLOR_PATTERN}{ICON_LABEL}  {k}: {v}{COLOR_RESET}")
+            print()
+        sys.exit(0)
 
     # Handle --list-competitions argument
     if args.list_competitions:
@@ -1934,16 +1982,16 @@ For more details, see the README or function docstrings.
         print("\033[91mError: --group is required when using --extract-teams.\033[0m")
         sys.exit(1)
     if args.extract_teams and not args.competition:
-        print("\033[91mError: --competition-id is required when using --extract-teams.\033[0m")
+        print("\033[91mError: --competition is required when using --extract-teams.\033[0m")
         sys.exit(1)
-    if args.group and not args.sub_url:
-        print("\033[91mError: --sub-url is required when using --group.\033[0m")
+    if args.group and not args.path:
+        print("\033[91mError: --path is required when using --group.\033[0m")
         sys.exit(1)
     
     # Handle new team data fetch flags
     if args.extract_team_data:
         if not args.site or not args.team:
-            print("\033[91mError: --site and --team-id are required for --extract-team-data.\033[0m")
+            print("\033[91mError: --site and --team are required for --extract-team-data.\033[0m")
             return
         requested = [x.strip().lower() for x in args.extract_team_data.split(",") if x.strip()]
         if len(requested) == 1 and requested[0] == "all":
@@ -2020,7 +2068,7 @@ For more details, see the README or function docstrings.
                 html_by_type["news"] = html
             elif item == "appearances":
                 if not args.competition:
-                    print("\033[91mError: --competition-id is required for appearances extraction.\033[0m")
+                    print("\033[91mError: --competition is required for appearances extraction.\033[0m")
                     continue
                 year = args.year if args.year else current_year
                 if not args.year:
@@ -2121,7 +2169,7 @@ For more details, see the README or function docstrings.
     if args.extract_competition_data:
         # Generalize to any site
         if not args.site or not args.competition:
-            print("\033[91mError: --site and --competition-id are required for --extract-competition-data.\033[0m")
+            print("\033[91mError: --site and --competition are required for --extract-competition-data.\033[0m")
             sys.exit(1)
         site = args.site.lower()
         if site not in SITE_URLS:
@@ -2184,7 +2232,7 @@ For more details, see the README or function docstrings.
             if args.cache_days is not None:
                 cache_days_obj["default"] = args.cache_days
                 cache_days_obj["competition"] = args.cache_days
-            success = scrape_site(site_name, info["url"], info["description"], cache_days_obj, args.extract_competitions, group=args.group, sub_url=args.sub_url, extract_teams=args.extract_teams, competition=args.competition, force_fetch=args.force_fetch)
+            success = scrape_site(site_name, info["url"], info["description"], cache_days_obj, args.extract_competitions, group=args.group, path=args.path, extract_teams=args.extract_teams, competition=args.competition, force_fetch=args.force_fetch)
             if success:
                 successful_scrapes += 1
             print(f"\033[94m{'='*50}\033[0m")
@@ -2204,7 +2252,7 @@ For more details, see the README or function docstrings.
             print(f"\033[94mCache override: Disabled\033[0m")
         else:
             print(f"\033[94mCache override: {args.cache_days} day{'s' if args.cache_days != 1 else ''}\033[0m")
-    success = scrape_site(args.site, url, description, cache_days_obj, args.extract_competitions, group=args.group, sub_url=args.sub_url, extract_teams=args.extract_teams, competition=args.competition, force_fetch=args.force_fetch)
+    success = scrape_site(args.site, url, description, cache_days_obj, args.extract_competitions, group=args.group, path=args.path, extract_teams=args.extract_teams, competition=args.competition, force_fetch=args.force_fetch)
     if success:
         print(f"\n\033[92m✓ Scraping completed successfully!\033[0m")
     else:
