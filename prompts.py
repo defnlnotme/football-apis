@@ -165,6 +165,9 @@ The possible data types and their meanings are:
 - h2h: Extract a summary of all opponents that the team has played against. For each opponent, include the opponent name, total matches, wins, draws, losses, goals for, goals against, and any other available aggregate stats. Do NOT include match-by-match details here.
 - h2h-vs: Extract detailed head-to-head data for matches between the team and a single specified opponent. For each match, include the date, competition, round, venue, score, and any other available details. If a date range is specified, only include matches within that range. Also provide aggregate stats (total matches, wins, draws, losses, goals for/against) for this matchup and time range.
 - team-stats: Extract all the stats you can find about the team, there are multiple stats groups, use one key per group, the schema is left to your best judgement, be complete but not too verbose.
+- odds: Extract all available betting odds for the team's matches. For each match, include the date, opponent, competition, and the odds for win/draw/loss (or other available markets). Group odds by bookmaker if possible.
+- outrights: Extract outright betting odds for the team (e.g., to win the league, to be relegated, etc.). For each market, include the market name, odds, bookmaker, and any relevant details.
+- odds-historical: Extract historical betting odds for the team's past matches. For each match, include the date, opponent, competition, and the odds at the time of the match for win/draw/loss (or other available markets). Group odds by bookmaker if possible.
 
 For the provided HTML, extract the relevant information for the corresponding data type and organize it in a JSON object as shown below. Only include a section if the corresponding HTML content is provided.
 
@@ -295,6 +298,82 @@ Example output for h2h-vs:
 Example output for team-stats:
 {{
     // ... site dependent ...
+}}
+
+Example output for odds:
+{{
+  "team": "ac-milan",
+  "odds": [
+    {{
+      "date": "2024-08-12",
+      "opponent": "Inter Milan",
+      "competition": "Serie A",
+      "bookmaker": "Bet365",
+      "markets": {{
+        "win": 2.10,
+        "draw": 3.30,
+        "loss": 3.50
+      }}
+    }}
+    // ... more matches ...
+  ]
+}}
+
+Example output for outrights:
+{{
+  "team": "ac-milan",
+  "outrights": [
+    {{
+      "market": "To Win Serie A",
+      "odds": 4.50,
+      "bookmaker": "Bet365",
+      "details": "2024/2025 season"
+    }},
+    {{
+      "market": "To Be Relegated",
+      "odds": 101.0,
+      "bookmaker": "Bet365",
+      "details": "2024/2025 season"
+    }}
+    // ... more markets ...
+  ]
+}}
+
+Example output for odds-historical:
+{{
+  "team": "ac-milan",
+  "odds_historical": [
+    {{
+      "date": "2023-05-10",
+      "opponent": "Juventus",
+      "competition": "Serie A",
+      "bookmaker": "Bet365",
+      "markets": {{
+        "win": 2.50,
+        "draw": 3.10,
+        "loss": 2.90
+      }}
+    }}
+    // ... more matches ...
+  ]
+}}
+
+Example output for standings:
+{{
+  "team": "ac-milan",
+  "standings": {{
+    "competition": "Serie A",
+    "season": "2024/2025",
+    "position": 2,
+    "points": 78,
+    "matches_played": 38,
+    "wins": 24,
+    "draws": 6,
+    "losses": 8,
+    "goals_for": 74,
+    "goals_against": 36,
+    "goal_difference": 38
+  }}
 }}
 
 If the data cannot be extracted, return an empty object for the relevant section.

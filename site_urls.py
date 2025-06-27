@@ -42,8 +42,8 @@ SITE_URLS = {
             "competitions": "/football",
             "odds": "/football/{group}/{competition}",
             "outrights": "/football/{group}/{competition}/outrights/",
-            "odds-historical": "/football/{group}/{competition}-{year_prev}-{year}/results/",
-            "standings": "/football/{group}/{competition}-{year_prev}-{year}/standings/",
+            "odds-historical": "/football/{group}/{competition}-{year_prev}-{year}/results/#/page/{page}",
+            "competition-stats": "/football/{group}/{competition}-{year_prev}-{year}/standings/",
         },
     },
 }
