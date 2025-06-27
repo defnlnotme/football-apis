@@ -46,4 +46,14 @@ SITE_URLS = {
             "competition-stats": "/football/{group}/{competition}-{year_prev}-{year}/standings/",
         },
     },
+    "oddschecker": {
+        "url": "https://www.oddschecker.com",
+        "description": "Oddschecker Italia - Comparatore quote calcio e scommesse sportive",
+        "cache_days": {"default": 1, "competition": 1},
+        "paths": {
+            "competitions": "/it/calcio",
+            "odds": "/it/calcio/{group}/{competition}",
+            "odds-match": "/it/calcio/{group}/{competition}/{team}-{vs_team}"
+        }
+    }
 }

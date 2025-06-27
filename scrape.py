@@ -561,12 +561,7 @@ def save_html_to_file(html_content: str, site_name: str, path: Optional[str] = N
         return f"Error saving file: {str(e)}"
 
 def display_competitions(competition_data: Dict[str, Any], site_name: str) -> None:
-    """Display extracted competitions in a nice format.
-
-    Args:
-        competition_data (Dict[str, Any]): The extracted competition data
-        site_name (str): The name of the site
-    """
+    """Display extracted competitions in a nice format, including the competition URL."""
     competitions = competition_data.get("competitions", [])
     summary = competition_data.get("summary", {})
 
@@ -593,8 +588,11 @@ def display_competitions(competition_data: Dict[str, Any], site_name: str) -> No
             group = comp.get("group", "")
             season = comp.get("season", "")
             description = comp.get("description", "")
+            url = comp.get("url") or comp.get("html_url")
 
             print(f"  • {name}")
+            if url:
+                print(f"    URL: {url}")
             if group:
                 print(f"    Group: {group}")
             if season:
@@ -1011,10 +1009,12 @@ def scrape_site(site_name: str, url: str, description: str, cache_days_obj: dict
     print(f"\033[93mNo extraction type specified. Use --extract for all other extraction types.\033[0m")
     return False
 
-def get_team_html_cache_path(site_name: str, team: str, data_type: str, year: str = "", competition: str = "", vs_team: str = "") -> pathlib.Path:
-    """Get the cache path for a team's HTML file for a given data type."""
+def get_team_html_cache_path(site_name: str, team: str, data_type: str, year: str = "", competition: str = "", vs_team: str = "", group: str = "") -> pathlib.Path:
+    """Get the cache path for a team's HTML file for a given data type, now including group if provided."""
     cache_dir = get_cache_dir(site_name)
     fname = f"{team}_{data_type}"
+    if group:
+        fname += f"_{group}"
     if year:
         fname += f"_{year}"
     if competition:
@@ -1724,7 +1724,7 @@ def _handle_extract(args):
         handle_competition_teams(args, data_dir, filename)
     if "competition-stats" in extract_types:
         handle_competition_stats(args, data_dir, filename)
-    team_data_types = {"historical", "news", "appearances", "squad", "h2h", "h2h-vs", "team-stats", "stats", "odds-historical", "odds", "outrights"}
+    team_data_types = {"historical", "news", "appearances", "squad", "h2h", "h2h-vs", "team-stats", "stats", "odds-historical", "odds", "outrights", "odds-match"}
     requested_team_data = [t for t in extract_types if t in team_data_types]
     if requested_team_data:
         handle_team_data(args, data_dir, filename, requested_team_data, meta)
@@ -1933,6 +1933,21 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 args=args
             )
             html_by_type["outrights"] = html
+        elif item == "odds-match":
+            # odds-match requires group, competition, team, vs_team
+            if not args.group or not args.competition or not args.team or not args.vs_team:
+                print("\033[91mError: --group, --competition, --team, and --vs-team are required for odds-match extraction.\033[0m")
+                continue
+            html = extract_team_odds_match(
+                args.site,
+                args.team,
+                args.vs_team,
+                args.group,
+                args.competition,
+                force_fetch=args.force_fetch,
+                args=args
+            )
+            html_by_type["odds-match"] = html
         else:
             print(f"\033[91mUnknown extract value: {item}\033[0m")
             continue
@@ -1943,6 +1958,30 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
             save_team_data_cache(cache_path, result)
             print(f"\033[92m✓ Saved extracted {item} data to {cache_path}\033[0m")
 
+def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str, competition: str, force_fetch: bool = False, args=None) -> str:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    pattern = paths.get("odds-match")
+    if not pattern:
+        raise ValueError(f"No odds-match pattern for site {site_name}")
+    if args is not None:
+        if getattr(args, 'group', None) is None:
+            setattr(args, 'group', group)
+        if getattr(args, 'competition', None) is None:
+            setattr(args, 'competition', competition)
+        if getattr(args, 'team', None) is None:
+            setattr(args, 'team', team)
+        if getattr(args, 'vs_team', None) is None:
+            setattr(args, 'vs_team', vs_team)
+    sub_path = fill_url_pattern(pattern, args)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team, "odds-match", competition=competition, vs_team=vs_team, group=group)
+    if not force_fetch and is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    html_content = extract_html_from_url(url)
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    return html_content
 
 def main():
     args = _parse_args()

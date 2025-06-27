@@ -14,6 +14,8 @@ IMPORTANT: For each competition, you MUST extract the URL that points to the com
 
 IMPORTANT: Only include competitions that are associated with the specified group: {group}. Ignore and do not return competitions that do not match the given group. The group to match will be provided in the extraction context or prompt.
 
+IMPORTANT: The value of the "group" field in your output must be kept as-is, exactly as it appears in the URL (do not translate, modify, or mangle it in any way). Preserve the syntax and casing as found in the URL.
+
 Return ALL leagues, tournaments, and cups for the specified group. Do not limit the results to a single competition.
 
 When analyzing content, look for:
@@ -33,7 +35,7 @@ Example output:
     {{
       "name": "Competition name 1",
       "type": "league|tournament|cup|international|regional|youth|womens",
-      "group": "Group or region",
+      "group": "Group or region as it appears in the URL (keep as-is, do not translate or modify)",
       "season": "Season if mentioned",
       "url": "URL to the competition page (MANDATORY)",
       "description": "Brief description if available"
@@ -41,7 +43,7 @@ Example output:
     {{
       "name": "Competition name 2",
       "type": "league|tournament|cup|international|regional|youth|womens",
-      "group": "Group or region",
+      "group": "Group or region as it appears in the URL (keep as-is, do not translate or modify)",
       "season": "Season if mentioned",
       "url": "URL to the competition page (MANDATORY)",
       "description": "Brief description if available"
