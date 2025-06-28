@@ -13,8 +13,9 @@
 # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
 
 # RULES: 
-# - never hard code selectors.
-# - always use the LLM to find selectors.
+# - MUST NOT hard code selectors (never).
+# - MUST always use the LLM to find selectors.
+# - anything that uses hard-coded paramters for filtering SHOULD be refactored to use the LLM
 
 import pathlib
 import os
@@ -1542,14 +1543,38 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
         """
         if self.llm_agent is None or not candidates:
             return candidates
+        
+        # Use LLM to filter all candidates - no hard-coded filtering
         items = "\n".join([f"{i+1}. {c['name']}" for i, c in enumerate(candidates)])
         prompt = f"""
 You are a football odds market extraction agent. Here is a list of button or container texts found on the page:
 
 {items}
 
-Which of these are actual betting market categories or market buttons (not navigation, ads, or unrelated controls)? 
-Return only the valid market names as a JSON list.
+CRITICAL: You need to identify which of these are actual betting market CATEGORIES (like "Vincente", "Totale gol", "Handicap Asiatico", "Risultato Esatto", etc.) vs data rows or other content.
+
+VALID MARKET CATEGORIES:
+- "Vincente" (Match Winner)
+- "Totale gol" (Total Goals)
+- "Handicap Asiatico" (Asian Handicap)
+- "Risultato Esatto" (Exact Score)
+- "Primo Tempo" (First Half)
+- "Secondo Tempo" (Second Half)
+- "Margine Vittoria" (Victory Margin)
+- "Entrambe le Squadre Segnano" (Both Teams Score)
+- "Over/Under" variations
+- "Corner" markets
+- "Card" markets (Yellow/Red cards)
+
+INVALID (REJECT THESE):
+- Text containing team names + odds (e.g., "MilanPareggioCremonese1.441.45...")
+- Long strings with multiple decimal numbers
+- Navigation elements, ads, or promotional text
+- Individual odds values only
+- Data rows with bookmaker names and odds
+- Any text that looks like a data row rather than a category name
+
+Return only the valid market category names as a JSON list. If none are valid, return an empty list [].
 """
         human_message = BaseMessage.make_user_message(
             role_name="Human",
@@ -1559,12 +1584,68 @@ Return only the valid market names as a JSON list.
         import json as _json
         try:
             filtered_names = _json.loads(response.msgs[0].content)
-        except Exception:
-            logger.warning("LLM did not return valid JSON, using all candidates.")
+            if not isinstance(filtered_names, list):
+                logger.warning("LLM did not return a list, using all candidates")
+                return candidates
+        except Exception as e:
+            logger.warning(f"LLM did not return valid JSON: {e}, using all candidates")
             return candidates
+        
         filtered = [c for c in candidates if c['name'] in filtered_names]
         logger.info(f"LLM filtered {len(filtered)} valid markets from {len(candidates)} candidates.")
         return filtered
+    
+    def _looks_like_data_row(self, text: str) -> bool:
+        """Check if text looks like a data row with team names and odds."""
+        # Check for patterns like "Team1Team2Odds1Odds2Odds3..."
+        import re
+        
+        # Look for multiple decimal numbers (odds) in sequence
+        odds_pattern = r'\d+\.\d+'
+        odds_matches = re.findall(odds_pattern, text)
+        
+        # If there are many odds values, it's likely a data row
+        if len(odds_matches) >= 3:
+            return True
+        
+        # If it's just odds values (no meaningful text), it's a data row
+        if len(odds_matches) >= 2 and len(re.sub(r'[\d\.\s]', '', text)) < 3:
+            return True
+        
+        # Look for team name patterns (common Italian team names)
+        team_patterns = [
+            r'milan', r'inter', r'juventus', r'roma', r'lazio', r'napoli', 
+            r'atalanta', r'fiorentina', r'torino', r'sassuolo', r'udinese',
+            r'cremonese', r'lecce', r'salernitana', r'verona', r'spezia'
+        ]
+        
+        text_lower = text.lower()
+        team_count = sum(1 for pattern in team_patterns if re.search(pattern, text_lower))
+        
+        # If there are team names and odds, it's likely a data row
+        if team_count >= 1 and len(odds_matches) >= 2:
+            return True
+        
+        # If the text is very long and contains many numbers, it's likely a data row
+        if len(text) > 50 and len(re.findall(r'\d', text)) > 5:
+            return True
+        
+        return False
+    
+    def _looks_like_odds_only(self, text: str) -> bool:
+        """Check if text contains only odds values."""
+        import re
+        
+        # Remove common separators and check if it's mostly numbers
+        cleaned = re.sub(r'[^\d\.]', '', text)
+        if len(cleaned) > 0 and len(cleaned) / len(text) > 0.7:
+            return True
+        
+        # Check if it's just a single odds value
+        if re.match(r'^\d+\.\d+$', text.strip()):
+            return True
+        
+        return False
 
     # Integrate into LLM-driven scraping loop
     # In _get_market_categories_with_selector and _get_markets_in_category_with_llm, filter the candidates before returning
@@ -1607,11 +1688,11 @@ Return only the valid market names as a JSON list.
                 if await element.is_visible():
                     text = await element.text_content()
                     if text and text.strip() and len(text.strip()) > 2:
-                        if not re.match(r'^\d+\.\d+$', text.strip()):
-                            markets.append({
-                                'name': text.strip(),
-                                'element': element
-                            })
+                        # Let the LLM handle all filtering decisions - no hard-coded filtering
+                        markets.append({
+                            'name': text.strip(),
+                            'element': element
+                        })
             # LLM filter
             markets = self._llm_filter_market_candidates(markets)
             logger.info(f"Found {len(markets)} markets in category '{category['name']}' using LLM selector: {market_selector}")
@@ -1693,13 +1774,12 @@ Return only the valid market names as a JSON list.
                     if await element.is_visible():
                         text = await element.text_content()
                         if text and text.strip() and len(text.strip()) > 2:
-                            # Filter out odds values (decimal numbers) and very short text
-                            if not re.match(r'^\d+\.\d+$', text.strip()):
-                                markets.append({
-                                    'name': text.strip(),
-                                    'element': element
-                                })
-                                logger.info(f"Found market in section '{section['name']}': {text.strip()}")
+                            # Let the LLM handle all filtering decisions - no hard-coded filtering
+                            markets.append({
+                                'name': text.strip(),
+                                'element': element
+                            })
+                            logger.info(f"Found market in section '{section['name']}': {text.strip()}")
                 except Exception as e:
                     logger.warning(f"Error processing market element: {e}")
                     continue
@@ -1870,7 +1950,7 @@ Return only the valid market names as a JSON list.
                 return []
             logger.info("Using LLM to find market categories in popup...")
             popup_html = await popup.evaluate('el => el.outerHTML')
-            user_goal = "find all market category containers (like 'Esiti incontro', 'Risultato finale', 'Handicap Asiatico', 'Over/Under') within the markets popup. These are the main category sections that contain multiple individual markets within them."
+            user_goal = "find all market category containers (like 'Esiti incontro', 'Risultato finale', 'Handicap Asiatico', 'Over/Under') within the markets popup. These are the main category sections that contain multiple individual markets within them. DO NOT select individual betting options or data rows with team names and odds - only select the category headers/containers."
             previous_actions = "Found markets popup"
             category_selector = self._llm_find_selector(popup_html, user_goal, previous_actions)
             if not category_selector:
@@ -1892,8 +1972,11 @@ Return only the valid market names as a JSON list.
                     logger.debug(f"Element {i}: visible={is_visible}, text='{text}'")
                     
                     if is_visible and text and text.strip():
+                        # Let the LLM handle all filtering decisions - no hard-coded filtering
+                        text_stripped = text.strip()
+                        
                         categories.append({
-                            'name': text.strip(),
+                            'name': text_stripped,
                             'element': element
                         })
                 except Exception as e:
@@ -1921,7 +2004,7 @@ Return only the valid market names as a JSON list.
             # Use LLM to find category selectors dynamically
             popup_html = await popup.evaluate('el => el.outerHTML')
             
-            user_goal = "find all elements that could be market category buttons or controls within this popup. Look for any clickable elements that might represent market categories."
+            user_goal = "find all elements that could be market category buttons or controls within this popup. Look for any clickable elements that might represent market categories. DO NOT select individual betting options or data rows with team names and odds."
             previous_actions = "LLM fallback search for market categories"
             
             # Get LLM-suggested selectors for category elements
@@ -1945,12 +2028,14 @@ Return only the valid market names as a JSON list.
                             if await element.is_visible():
                                 text = await element.text_content()
                                 if text and text.strip() and len(text.strip()) > 2:
-                                    # Filter out obvious non-market elements
-                                    text_lower = text.strip().lower()
-                                    # Accept any text that's not too short and doesn't look like odds values
-                                    if len(text.strip()) > 2 and not re.match(r'^\d+\.\d+$', text.strip()):
+                                    text_stripped = text.strip()
+                                    
+                                    # Let the LLM handle all filtering decisions - no hard-coded filtering
+                                    
+                                    # Additional basic checks
+                                    if not re.match(r'^\d+\.\d+$', text_stripped):
                                         categories.append({
-                                            'name': text.strip(),
+                                            'name': text_stripped,
                                             'element': element
                                         })
                         except Exception as e:
@@ -1958,6 +2043,9 @@ Return only the valid market names as a JSON list.
                     
                     if categories:
                         logger.info(f"Fallback selector '{selector}' found {len(categories)} market categories")
+                        # Apply LLM filtering to the fallback results too
+                        categories = self._llm_filter_market_candidates(categories)
+                        logger.info(f"After LLM filtering: {len(categories)} market categories")
                         return categories
                         
                 except Exception as e:
@@ -2789,4 +2877,4 @@ Return ONLY the most specific, valid CSS selector that will reliably find the ta
 
 def create_scraping_agent(headless: bool = True, model_type: str = "gemini-2.5-flash-lite-preview-06-17") -> 'WebScrapingAgent':
     """Create a Playwright-based web scraping agent for autonomous dynamic odds market scraping."""
-    return WebScrapingAgent(headless=headless, model_type=model_type) 
+    return WebScrapingAgent(headless=headless, model_type=model_type)
