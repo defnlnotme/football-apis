@@ -39,7 +39,11 @@ from prompts import *
 import mimetypes
 import requests
 from urllib.parse import urlparse
+from agent import create_scraping_agent, WebScrapingAgent
+import asyncio
 
+# Import APIKeyManager from agent.py
+from agent import APIKeyManager, api_key_manager
 
 base_dir = pathlib.Path(__file__).parent
 env_path = base_dir / ".envrc"
@@ -270,6 +274,13 @@ def create_competition_extraction_agent(group: str, model_type=Models.flash_lite
         ChatAgent: The configured competition extraction agent
     """
     try:
+        # Set the correct API key for the platform before creating the model
+        platform = api_key_manager._get_platform_from_model(model_type)
+        api_keys = api_key_manager._get_api_keys_for_platform(platform)
+        if api_keys:
+            idx = api_key_manager.current_key_indices.get(platform, 0)
+            os.environ[f"{platform.upper()}_API_KEY"] = api_keys[idx]
+
         # Create a model for the agent
         model = ModelFactory.create(
             model_platform=ModelPlatformType.GEMINI,
@@ -303,14 +314,20 @@ def extract_competitions_with_llm(html_content: str, site_name: str, group: Opti
     Returns:
         Dict[str, Any]: Extracted competition data in structured format
     """
-    try:
-        logger.info(f"Starting competition extraction for {site_name}")
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            # Log brief summary instead of full content
+            html_length = len(html_content)
+            logger.info(f"Starting competition extraction for {site_name} (HTML length: {html_length} chars)")
 
-        # Create the competition extraction agent with group interpolation
-        agent = create_competition_extraction_agent(group or "(not specified)")
+            # Create the competition extraction agent with group interpolation
+            agent = create_competition_extraction_agent(group or "(not specified)")
 
-        # Prepare the analysis prompt
-        analysis_prompt = f"""
+            # Prepare the analysis prompt
+            analysis_prompt = f"""
 Please analyze the following HTML content from {site_name} and extract all football competitions, tournaments, and leagues mentioned.
 
 HTML Content:
@@ -319,101 +336,151 @@ HTML Content:
 Please provide a comprehensive list of all competitions found, organized by type and category.
 """
 
-        # Create the human message using the correct method
-        human_message = BaseMessage.make_user_message(
-            role_name="Human",
-            content=analysis_prompt
-        )
+            # Create the human message using the correct method
+            human_message = BaseMessage.make_user_message(
+                role_name="Human",
+                content=analysis_prompt
+            )
 
-        # Get response from the agent
-        logger.info("Sending content to competition extraction agent")
-        response = agent.step(human_message)
+            # Get response from the agent
+            logger.info("Sending content to competition extraction agent")
+            response = agent.step(human_message)
 
-        if not response.msgs:
-            logger.error("No response received from competition extraction agent")
-            return {
-                "competitions": [],
-                "summary": {
-                    "total_competitions": 0,
-                    "categories": {
-                        "leagues": 0,
-                        "tournaments": 0,
-                        "cups": 0,
-                        "international": 0,
-                        "regional": 0,
-                        "youth": 0,
-                        "womens": 0
-                    }
-                },
-                "error": "No response from agent"
-            }
-
-        # Extract the response content
-        agent_response = response.msgs[0].content
-        logger.info(f"Received response from agent: {len(agent_response)} characters")
-
-        # Try to parse JSON from the response
-        try:
-            # Look for JSON in the response
-            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', agent_response)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                # Try to find JSON object in the response
-                json_match = re.search(r'\{[\s\S]*\}', agent_response)
-                if json_match:
-                    json_str = json_match.group(0)
-                else:
-                    raise ValueError("No JSON found in response")
-
-            # Parse the JSON
-            competition_data = json.loads(json_str)
-            logger.info(f"Successfully extracted {competition_data.get('summary', {}).get('total_competitions', 0)} competitions")
-
-            return competition_data
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from agent response: {str(e)}")
-            logger.debug(f"Raw response: {agent_response}")
-
-            # Return a fallback structure with the raw response
-            return {
-                "competitions": [],
-                "summary": {
-                    "total_competitions": 0,
-                    "categories": {
-                        "leagues": 0,
-                        "tournaments": 0,
-                        "cups": 0,
-                        "international": 0,
-                        "regional": 0,
-                        "youth": 0,
-                        "womens": 0
-                    }
-                },
-                "error": f"JSON parsing failed: {str(e)}",
-                "raw_response": agent_response[:1000]  # Include first 1000 chars for debugging
-            }
-
-    except Exception as e:
-        logger.error(f"Exception during competition extraction: {str(e)}")
-        logger.debug(traceback.format_exc())
-        return {
-            "competitions": [],
-            "summary": {
-                "total_competitions": 0,
-                "categories": {
-                    "leagues": 0,
-                    "tournaments": 0,
-                    "cups": 0,
-                    "international": 0,
-                    "regional": 0,
-                    "youth": 0,
-                    "womens": 0
+            if not response.msgs:
+                logger.error("No response received from competition extraction agent")
+                return {
+                    "competitions": [],
+                    "summary": {
+                        "total_competitions": 0,
+                        "categories": {
+                            "leagues": 0,
+                            "tournaments": 0,
+                            "cups": 0,
+                            "international": 0,
+                            "regional": 0,
+                            "youth": 0,
+                            "womens": 0
+                        }
+                    },
+                    "error": "No response from agent"
                 }
-            },
-            "error": f"Extraction failed: {str(e)}"
-        }
+
+            # Extract the response content
+            agent_response = response.msgs[0].content
+            logger.info(f"Received response from agent: {len(agent_response)} characters")
+
+            # Try to parse JSON from the response
+            try:
+                # Look for JSON in the response
+                json_match = re.search(r'```json\s*([\s\S]*?)\s*```', agent_response)
+                if json_match:
+                    json_str = json_match.group(1)
+                else:
+                    # Try to find JSON object in the response
+                    json_match = re.search(r'\{[\s\S]*\}', agent_response)
+                    if json_match:
+                        json_str = json_match.group(0)
+                    else:
+                        raise ValueError("No JSON found in response")
+
+                # Parse the JSON
+                competition_data = json.loads(json_str)
+                logger.info(f"Successfully extracted {competition_data.get('summary', {}).get('total_competitions', 0)} competitions")
+
+                return competition_data
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON from agent response: {str(e)}")
+                logger.debug(f"Raw response: {agent_response}")
+
+                # Return a fallback structure with the raw response
+                return {
+                    "competitions": [],
+                    "summary": {
+                        "total_competitions": 0,
+                        "categories": {
+                            "leagues": 0,
+                            "tournaments": 0,
+                            "cups": 0,
+                            "international": 0,
+                            "regional": 0,
+                            "youth": 0,
+                            "womens": 0
+                        }
+                    },
+                    "error": f"JSON parsing failed: {str(e)}",
+                    "raw_response": agent_response[:1000]  # Include first 1000 chars for debugging
+                }
+                
+        except Exception as e:
+            error_str = str(e).lower()
+            if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
+                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                
+                # Record the rate limit error and rotate API key
+                api_key_manager.record_rate_limit_error(Models.flash_lite)
+                
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Retrying with new API key...")
+                    time.sleep(2)  # Brief pause before retry
+                    continue
+                else:
+                    logger.error(f"Max retries reached for rate limit errors")
+                    return {
+                        "competitions": [],
+                        "summary": {
+                            "total_competitions": 0,
+                            "categories": {
+                                "leagues": 0,
+                                "tournaments": 0,
+                                "cups": 0,
+                                "international": 0,
+                                "regional": 0,
+                                "youth": 0,
+                                "womens": 0
+                            }
+                        },
+                        "error": f"Rate limit exceeded after {max_retries} retries"
+                    }
+            else:
+                # Non-rate-limit error, don't retry
+                logger.error(f"Exception during competition extraction: {str(e)}")
+                logger.debug(traceback.format_exc())
+                return {
+                    "competitions": [],
+                    "summary": {
+                        "total_competitions": 0,
+                        "categories": {
+                            "leagues": 0,
+                            "tournaments": 0,
+                            "cups": 0,
+                            "international": 0,
+                            "regional": 0,
+                            "youth": 0,
+                            "womens": 0
+                        }
+                    },
+                    "error": f"Extraction failed: {str(e)}"
+                }
+    
+    # This should never be reached, but return empty result to satisfy type checker
+    return {
+        "competitions": [],
+        "summary": {
+            "total_competitions": 0,
+            "categories": {
+                "leagues": 0,
+                "tournaments": 0,
+                "cups": 0,
+                "international": 0,
+                "regional": 0,
+                "youth": 0,
+                "womens": 0
+            }
+        },
+        "error": "Unexpected error in competition extraction"
+    }
 
 def save_competitions_to_file(competition_data: Dict[str, Any], site_name: str, path: Optional[str] = None) -> str:
     """Save extracted competition data to a JSON file in the cache folder.
@@ -805,6 +872,11 @@ def create_team_extraction_agent(competition: str) -> ChatAgent:
         ChatAgent: The configured team extraction agent
     """
     try:
+        platform = api_key_manager._get_platform_from_model(Models.flash)
+        api_keys = api_key_manager._get_api_keys_for_platform(platform)
+        if api_keys:
+            idx = api_key_manager.current_key_indices.get(platform, 0)
+            os.environ[f"{platform.upper()}_API_KEY"] = api_keys[idx]
         model = ModelFactory.create(
             model_platform=ModelPlatformType.GEMINI,
             model_type=Models.flash,
@@ -822,18 +894,15 @@ def create_team_extraction_agent(competition: str) -> ChatAgent:
         raise e
 
 def extract_teams_with_llm(html_content: str, site_name: str, competition: str) -> Dict[str, Any]:
-    """Extract team list from HTML content using a CAMEL agent.
-    Args:
-        html_content (str): The HTML content to analyze
-        site_name (str): The name of the site being analyzed
-        competition (str): Competition ID to filter teams by
-    Returns:
-        Dict[str, Any]: Extracted team data in structured format
-    """
-    try:
-        logger.info(f"Starting team extraction for {site_name}")
-        agent = create_team_extraction_agent(competition)
-        analysis_prompt = f"""
+    """Extract teams from HTML content using LLM."""
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            logger.info(f"Starting team extraction for {site_name}")
+            agent = create_team_extraction_agent(competition)
+            analysis_prompt = f"""
 Please analyze the following HTML content from {site_name} and extract all football teams and clubs participating in competition: {competition}.
 
 HTML Content:
@@ -841,46 +910,91 @@ HTML Content:
 
 Please provide a comprehensive list of all teams found, organized by type and category.
 """
-        human_message = BaseMessage.make_user_message(
-            role_name="Human",
-            content=analysis_prompt
-        )
-        logger.info("Sending content to team extraction agent")
-        response = agent.step(human_message)
-        if not response.msgs:
-            logger.error("No response received from team extraction agent")
-            return {
-                "teams": [],
-                "summary": {
-                    "total_teams": 0,
-                    "categories": {
-                        "club": 0,
-                        "national": 0,
-                        "youth": 0,
-                        "women": 0
-                    }
-                },
-                "error": "No response from agent"
-            }
-        agent_response = response.msgs[0].content
-        logger.info(f"Received response from agent: {len(agent_response)} characters")
-        return extract_json_from_response(agent_response)
-    except Exception as e:
-        logger.error(f"Exception during team extraction: {str(e)}")
-        logger.debug(traceback.format_exc())
-        return {
-            "teams": [],
-            "summary": {
-                "total_teams": 0,
-                "categories": {
-                    "club": 0,
-                    "national": 0,
-                    "youth": 0,
-                    "women": 0
+            human_message = BaseMessage.make_user_message(
+                role_name="Human",
+                content=analysis_prompt
+            )
+            logger.info("Sending content to team extraction agent")
+            response = agent.step(human_message)
+            if not response.msgs:
+                logger.error("No response received from team extraction agent")
+                return {
+                    "teams": [],
+                    "summary": {
+                        "total_teams": 0,
+                        "categories": {
+                            "club": 0,
+                            "national": 0,
+                            "youth": 0,
+                            "women": 0
+                        }
+                    },
+                    "error": "No response from agent"
                 }
-            },
-            "error": f"Extraction failed: {str(e)}"
-        }
+            agent_response = response.msgs[0].content
+            logger.info(f"Received response from agent: {len(agent_response)} characters")
+            return extract_json_from_response(agent_response)
+            
+        except Exception as e:
+            error_str = str(e).lower()
+            if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
+                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                
+                # Record the rate limit error and rotate API key
+                api_key_manager.record_rate_limit_error(Models.flash_lite)
+                
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Retrying with new API key...")
+                    time.sleep(2)  # Brief pause before retry
+                    continue
+                else:
+                    logger.error(f"Max retries reached for rate limit errors")
+                    return {
+                        "teams": [],
+                        "summary": {
+                            "total_teams": 0,
+                            "categories": {
+                                "club": 0,
+                                "national": 0,
+                                "youth": 0,
+                                "women": 0
+                            }
+                        },
+                        "error": f"Rate limit exceeded after {max_retries} retries"
+                    }
+            else:
+                # Non-rate-limit error, don't retry
+                logger.error(f"Exception during team extraction: {str(e)}")
+                logger.debug(traceback.format_exc())
+                return {
+                    "teams": [],
+                    "summary": {
+                        "total_teams": 0,
+                        "categories": {
+                            "club": 0,
+                            "national": 0,
+                            "youth": 0,
+                            "women": 0
+                        }
+                    },
+                    "error": f"Extraction failed: {str(e)}"
+                }
+    
+    # This should never be reached, but return empty result to satisfy type checker
+    return {
+        "teams": [],
+        "summary": {
+            "total_teams": 0,
+            "categories": {
+                "club": 0,
+                "national": 0,
+                "youth": 0,
+                "women": 0
+            }
+        },
+        "error": "Unexpected error in team extraction"
+    }
 
 def display_teams(team_data: Dict[str, Any], site_name: str) -> None:
     """Display extracted teams in a nice format for a specific competition."""
@@ -1120,10 +1234,15 @@ def create_team_data_extraction_agent(team: str, model_type: str = Models.flash_
 
     Args:
         team (str): The team ID to extract data for.
-        model_type (str): The model type to use for extraction. Defaults to "gemini-2.5-flash-lite-preview-06-17".
+        model_type (str): The model type to use for extraction. Defaults to "gemini-2.5-flash".
     Returns:
         ChatAgent: The configured team data extraction agent
     """
+    platform = api_key_manager._get_platform_from_model(model_type)
+    api_keys = api_key_manager._get_api_keys_for_platform(platform)
+    if api_keys:
+        idx = api_key_manager.current_key_indices.get(platform, 0)
+        os.environ[f"{platform.upper()}_API_KEY"] = api_keys[idx]
     model = ModelFactory.create(
         model_platform=ModelPlatformType.GEMINI,
         model_type=model_type,
@@ -1141,9 +1260,14 @@ def extract_team_data_with_llm(team: str, html_by_type: dict, meta: dict, save_d
     """Extract structured team data from HTML content for each requested type using the specialized agent.
     If JSON extraction fails, save the raw response to a .txt file if save_dir and save_prefix are provided.
     """
-    agent = create_team_data_extraction_agent(team)
-    # Compose the prompt
-    prompt = f"""
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            agent = create_team_data_extraction_agent(team)
+            # Compose the prompt
+            prompt = f"""
 Extract the following data for team: {team}
 
 Meta information:
@@ -1151,43 +1275,68 @@ Meta information:
 
 HTML content for each type:
 """
-    for t, html in html_by_type.items():
-        prompt += f"\n--- {t.upper()} HTML ---\n{html}\n"
-    prompt += "\nPlease return the extracted data in the required JSON format."
-    human_message = BaseMessage.make_user_message(
-        role_name="Human",
-        content=prompt
-    )
-    response = agent.step(human_message)
-    agent_response = response.msgs[0].content if response.msgs else ""
-    try:
-        result = extract_json_from_response(agent_response)
-        # Sort historical matches by date if present
-        if "historical" in result and isinstance(result["historical"], list):
-            from datetime import datetime
-            def parse_date_safe(d):
-                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):  # try common formats
-                    try:
-                        return datetime.strptime(d, fmt)
-                    except Exception:
-                        continue
-                try:
-                    return datetime.fromisoformat(d)
-                except Exception:
-                    return d  # fallback: string sort
-            result["historical"] = sorted(
-                result["historical"],
-                key=lambda m: parse_date_safe(m.get("date", ""))
+            for t, html in html_by_type.items():
+                prompt += f"\n--- {t.upper()} HTML ---\n{html}\n"
+            prompt += "\nPlease return the extracted data in the required JSON format."
+            human_message = BaseMessage.make_user_message(
+                role_name="Human",
+                content=prompt
             )
-        return result
-    except Exception as e:
-        logger.error(f"Failed to extract JSON: {e}")
-        if save_dir and save_prefix:
-            raw_path = os.path.join(save_dir, save_prefix + "_raw.txt")
-            with open(raw_path, "w", encoding="utf-8") as f:
-                f.write(agent_response)
-            print(f"\033[93m⚠ Failed to extract JSON, saved raw agent response to {raw_path}\033[0m")
-        raise
+            response = agent.step(human_message)
+            agent_response = response.msgs[0].content if response.msgs else ""
+            
+            try:
+                result = extract_json_from_response(agent_response)
+                # Sort historical matches by date if present
+                if "historical" in result and isinstance(result["historical"], list):
+                    from datetime import datetime
+                    def parse_date_safe(d):
+                        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):  # try common formats
+                            try:
+                                return datetime.strptime(d, fmt)
+                            except Exception:
+                                continue
+                        try:
+                            return datetime.fromisoformat(d)
+                        except Exception:
+                            return d  # fallback: string sort
+                    result["historical"] = sorted(
+                        result["historical"],
+                        key=lambda m: parse_date_safe(m.get("date", ""))
+                    )
+                return result
+            except Exception as e:
+                logger.error(f"Failed to extract JSON: {e}")
+                if save_dir and save_prefix:
+                    raw_path = os.path.join(save_dir, save_prefix + "_raw.txt")
+                    with open(raw_path, "w", encoding="utf-8") as f:
+                        f.write(agent_response)
+                    print(f"\033[93m⚠ Failed to extract JSON, saved raw agent response to {raw_path}\033[0m")
+                raise
+                
+        except Exception as e:
+            error_str = str(e).lower()
+            if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
+                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                
+                # Record the rate limit error and rotate API key
+                api_key_manager.record_rate_limit_error(Models.flash_lite)
+                
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Retrying with new API key...")
+                    time.sleep(2)  # Brief pause before retry
+                    continue
+                else:
+                    logger.error(f"Max retries reached for rate limit errors")
+                    raise
+            else:
+                # Non-rate-limit error, don't retry
+                logger.error(f"Error in team data extraction: {e}")
+                raise
+    
+    # This should never be reached, but return empty dict to satisfy type checker
+    return {}
 
 def extract_team_h2h(site_name: str, team: str, force_fetch: bool = False, args=None) -> str:
     """Extract the h2h summary page for a team, if the site provides a static link."""
@@ -1257,18 +1406,47 @@ def compute_h2h_aggregate(matches):
     return agg
 
 def extract_competition_data_with_llm(html_content: str, site_name: str, competition: str) -> dict:
-    agent = ChatAgent(
-        model=ModelFactory.create(
-            model_platform=ModelPlatformType.GEMINI,
-            model_type=Models.flash_lite
-        ),
-        system_message=COMPETITION_DATA_EXTRACTION_PROMPT.format(competition=competition)
-    )
-    prompt = f"Extract all teams statistics for competition: {competition} from the following HTML:\n{html_content}"
-    human_message = BaseMessage.make_user_message(role_name="Human", content=prompt)
-    response = agent.step(human_message)
-    agent_response = response.msgs[0].content if response.msgs else ""
-    return extract_json_from_response(agent_response)
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            agent = ChatAgent(
+                model=ModelFactory.create(
+                    model_platform=ModelPlatformType.GEMINI,
+                    model_type=Models.flash_lite
+                ),
+                system_message=COMPETITION_DATA_EXTRACTION_PROMPT.format(competition=competition)
+            )
+            prompt = f"Extract all teams statistics for competition: {competition} from the following HTML:\n{html_content}"
+            human_message = BaseMessage.make_user_message(role_name="Human", content=prompt)
+            response = agent.step(human_message)
+            agent_response = response.msgs[0].content if response.msgs else ""
+            return extract_json_from_response(agent_response)
+            
+        except Exception as e:
+            error_str = str(e).lower()
+            if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
+                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                
+                # Record the rate limit error and rotate API key
+                api_key_manager.record_rate_limit_error(Models.flash_lite)
+                
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Retrying with new API key...")
+                    time.sleep(2)  # Brief pause before retry
+                    continue
+                else:
+                    logger.error(f"Max retries reached for rate limit errors")
+                    return {"error": f"Rate limit exceeded after {max_retries} retries"}
+            else:
+                # Non-rate-limit error, don't retry
+                logger.error(f"Error in competition data extraction: {e}")
+                return {"error": f"Extraction failed: {str(e)}"}
+    
+    # This should never be reached, but return error to satisfy type checker
+    return {"error": "Unexpected error in competition data extraction"}
 
 def extract_team_stats(site_name: str, team: str, group: str = "", competition: str = "", force_fetch: bool = False, args=None) -> str:
     site_name = site_name or ""
@@ -1975,13 +2153,113 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
     sub_path = fill_url_pattern(pattern, args)
     url = urljoin(SITE_URLS[site_name]["url"], sub_path)
     cache_path = get_team_html_cache_path(site_name, team, "odds-match", competition=competition, vs_team=vs_team, group=group)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    
+    # Check if we have cached market data (JSON format)
+    json_cache_path = cache_path.with_suffix('.json')
+    if not force_fetch and json_cache_path.exists():
+        try:
+            with open(json_cache_path, 'r', encoding='utf-8') as f:
+                cached_data = json.load(f)
+                logger.info(f"Using cached market data: {json_cache_path}")
+                return json.dumps(cached_data, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"Error loading cached market data: {e}")
+    
+    # Use the Playwright-based LLM agent for dynamic odds market scraping
+    try:
+        logger.info(f"Using Playwright agent for dynamic odds market scraping: {url}")
+        agent = create_scraping_agent(headless=True, model_type=Models.flash_lite)  # Use headless mode for production
+        
+        # Run the async scraping function - now returns List[Dict[str, Any]]
+        collected_markets = asyncio.run(agent.scrape_odds_markets(url, team, vs_team, competition))
+        
+        # Save the structured market data as JSON
+        market_data = {
+            'site': site_name,
+            'team': team,
+            'vs_team': vs_team,
+            'competition': competition,
+            'group': group,
+            'url': url,
+            'scraped_at': time.time(),
+            'markets': collected_markets,
+            'total_markets': len(collected_markets)
+        }
+        
+        # Save as JSON
+        with open(json_cache_path, 'w', encoding='utf-8') as f:
+            json.dump(market_data, f, ensure_ascii=False, indent=2)
+        
+        # Also save as HTML for backward compatibility (convert to HTML representation)
+        html_content = f"""
+        <html>
+        <head><title>Odds Markets - {team} vs {vs_team}</title></head>
+        <body>
+        <h1>Odds Markets: {team} vs {vs_team}</h1>
+        <p>Competition: {competition}</p>
+        <p>Site: {site_name}</p>
+        <p>Total Markets: {len(collected_markets)}</p>
+        <div id="markets">
+        """
+        
+        for i, market in enumerate(collected_markets, 1):
+            html_content += f"""
+            <div class="market" data-market-id="{i}">
+                <h3>Market {i}: {market.get('market_name', 'Unknown Market')}</h3>
+                <p><strong>Type:</strong> {market.get('market_type', 'unknown')}</p>
+                <p><strong>Structure:</strong> {market.get('structure', 'unknown')}</p>
+            """
+            
+            if market.get('structure') == 'table':
+                headers = market.get('headers', [])
+                rows = market.get('rows', [])
+                if headers:
+                    html_content += "<table border='1'><thead><tr>"
+                    for header in headers:
+                        html_content += f"<th>{header}</th>"
+                    html_content += "</tr></thead><tbody>"
+                    
+                    for row in rows:
+                        html_content += "<tr>"
+                        for cell in row:
+                            html_content += f"<td>{cell}</td>"
+                        html_content += "</tr>"
+                    
+                    html_content += "</tbody></table>"
+            
+            elif market.get('structure') == 'list':
+                odds_list = market.get('odds', [])
+                if odds_list:
+                    html_content += "<table border='1'><thead><tr><th>Condition</th><th>Odds</th><th>Bookmaker</th></tr></thead><tbody>"
+                    for odds_item in odds_list:
+                        html_content += f"<tr><td>{odds_item.get('condition', 'Unknown')}</td><td>{odds_item.get('odds', 'Unknown')}</td><td>{odds_item.get('bookmaker', 'Unknown')}</td></tr>"
+                    html_content += "</tbody></table>"
+            
+            elif market.get('structure') == 'text':
+                content = market.get('content', '')
+                html_content += f"<p><strong>Content:</strong> {content}</p>"
+            
+            html_content += "</div>"
+        
+        html_content += """
+        </div>
+        </body>
+        </html>
+        """
+        
+        # Save HTML version for backward compatibility
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        logger.info(f"Dynamic odds market scraping completed for {team} vs {vs_team}. Collected {len(collected_markets)} markets.")
+        return json.dumps(market_data, ensure_ascii=False, indent=2)
+        
+    except Exception as e:
+        logger.error(f"Playwright error in dynamic odds market scraping: {str(e)}")
+        print(f"\033[91m✗ Playwright error: {str(e)}\033[0m")
+        print(f"\033[91mTerminating script due to Playwright error.\033[0m")
+        # Terminate the script as requested
+        sys.exit(1)
 
 def main():
     args = _parse_args()

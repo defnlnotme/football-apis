@@ -27,6 +27,7 @@ dependencies = [
     "camel-ai[owl]",
     "crawl4ai>=0.4.24",
     "owl",
+    "playwright>=1.40.0",
 ]
 
 [project.urls]
