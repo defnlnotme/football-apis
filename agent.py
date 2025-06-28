@@ -12,6 +12,10 @@
 # limitations under the License.
 # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
 
+# RULES: 
+# - never hard code selectors.
+# - always use the LLM to find selectors.
+
 import pathlib
 import os
 import json
@@ -27,7 +31,7 @@ from camel.messages import BaseMessage
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType
 from playwright.async_api import async_playwright, Browser, Page
-from prompts import ODDS_SYSTEM_PROMPT
+from prompts import ODDS_SYSTEM_PROMPT, WEB_SCRAPING_AGENT_SYSTEM_PROMPT, SELECTOR_AGENT_SYSTEM_PROMPT, Models
 
 # Load environment variables
 base_dir = pathlib.Path(__file__).parent
@@ -54,6 +58,17 @@ class APIKeyManager:
                 with open(self.api_keys_file, 'r') as f:
                     self.api_keys_cache = json.load(f)
                 logger.info(f"Loaded API keys for platforms: {list(self.api_keys_cache.keys())}")
+                
+                # Set initial environment variables for all platforms
+                for platform, keys in self.api_keys_cache.items():
+                    if isinstance(keys, list) and keys:  # For platforms with multiple keys
+                        env_var_name = f"{platform.upper()}_API_KEY"
+                        os.environ[env_var_name] = keys[0]  # Set first key as default
+                        logger.info(f"Set initial API key for {platform}")
+                    elif isinstance(keys, dict) and 'api_key' in keys:  # For platforms with single key
+                        env_var_name = f"{platform.upper()}_API_KEY"
+                        os.environ[env_var_name] = keys['api_key']
+                        logger.info(f"Set initial API key for {platform}")
             else:
                 logger.warning(f"API keys file not found: {self.api_keys_file}")
                 self.api_keys_cache = {}
@@ -81,7 +96,7 @@ class APIKeyManager:
         """Record a rate limit error and rotate keys immediately."""
         platform = self._get_platform_from_model(model_type)
         
-        logger.warning(f"Rate limit error detected for platform: {platform}")
+        logger.warning(f"Rate limit for platform: {platform}")
         
         # Rotate the key immediately on first rate limit error
         self._rotate_api_key(platform)
@@ -126,7 +141,7 @@ api_key_manager = APIKeyManager()
 class WebScrapingAgent:
     """A web scraping agent that uses Playwright with LLM guidance for autonomous interaction."""
     
-    def __init__(self, headless: bool = True, model_type: str = "gemini-2.5-flash-lite-preview-06-17"):
+    def __init__(self, headless: bool = True, model_type: str = Models.flash_lite):
         self.headless = headless
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
@@ -140,6 +155,12 @@ class WebScrapingAgent:
         self.last_market_count = 0  # Track number of markets found
         self.page_snapshots = []    # Store page snapshots for diffing
         self.current_page_html = "" # Current page HTML for diffing
+        self.processed_categories = set()  # Track processed market categories/sections
+        
+        # State tracking for session management
+        self.all_markets_clicked = False  # Track if "all markets" button has been clicked
+        self.session_actions = []  # Track all actions taken in this session
+        self.current_phase = "initial"  # Track current phase: initial, markets_expanded, collecting_markets
         
         # Initialize the LLM agent
         self._init_llm_agent()
@@ -168,38 +189,7 @@ Be thorough in your navigation and ensure all requested content is visible befor
             # Create the LLM agent for intelligent decision making
             self.llm_agent = ChatAgent(
                 model=model,
-                system_message="""You are an intelligent web scraping assistant that analyzes web page content and determines the best actions to take for scraping betting odds markets.
-
-Your task is to:
-1. Analyze the current page state (buttons, content, structure)
-2. Understand the user's goal (scraping all markets)
-3. Determine the next best action to achieve that goal
-4. Return a clear action command
-
-IMPORTANT: For betting odds sites like oddschecker, you MUST click on market buttons to load the market data via AJAX. Look for buttons with text like:
-- "Vincente" (Winner)
-- "Totale gol - Under/Over" (Total Goals)
-- "Handicap Asiatico" (Asian Handicap)
-- "Margine Vittoria" (Victory Margin)
-- "Risultato Esatto" (Exact Result)
-- "Primo Tempo / Secondo Tempo" (First Half/Second Half)
-- "Tutti i Mercati" (All Markets)
-
-Available actions:
-- CLICK_BUTTON:"button text" - Click a specific button (use exact button text)
-- WAIT:seconds - Wait for specified seconds
-- SCROLL:direction - Scroll up/down/left/right
-- CHECK_CONTENT - Analyze if goal is achieved
-- STOP - Stop if goal is achieved or no more actions needed
-
-PRIORITY RULES:
-1. ALWAYS click market buttons first - these load the actual odds data
-2. Click "Tutti i Mercati" (All Markets) if available to expand all markets
-3. Click individual market buttons one by one to load their data
-4. Wait after each click for AJAX to load
-5. Only stop when all market buttons have been clicked and data loaded
-
-Always prioritize user safety and avoid clicking suspicious elements. Be thorough in your analysis."""
+                system_message=WEB_SCRAPING_AGENT_SYSTEM_PROMPT
             )
             
             logger.info("LLM agent initialized successfully")
@@ -207,6 +197,56 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
         except Exception as e:
             logger.error(f"Failed to initialize LLM agent: {e}")
             raise e
+    
+    def _reset_session_state(self):
+        """Reset session state for a new scraping session."""
+        self.all_markets_clicked = False
+        self.session_actions = []
+        self.current_phase = "initial"
+        self.collected_markets = []
+        self.processed_markets.clear()
+        self.market_states = {}
+        self.last_market_count = 0
+        self.page_snapshots = []
+        self.current_page_html = ""
+        self.processed_categories.clear()
+        logger.info("Session state reset for new scraping session")
+    
+    def _record_session_action(self, action: str, details: str = ""):
+        """Record an action taken in the current session."""
+        timestamp = time.time()
+        action_record = {
+            'timestamp': timestamp,
+            'action': action,
+            'details': details,
+            'phase': self.current_phase
+        }
+        self.session_actions.append(action_record)
+        logger.debug(f"Recorded session action: {action} - {details}")
+    
+    def _get_session_summary(self) -> str:
+        """Get a summary of actions taken in the current session."""
+        if not self.session_actions:
+            return "No actions taken yet"
+        
+        summary_parts = []
+        for action in self.session_actions[-10:]:  # Last 10 actions
+            summary_parts.append(f"- {action['action']}: {action['details']}")
+        
+        return "\n".join(summary_parts)
+    
+    def _update_phase(self, new_phase: str):
+        """Update the current phase of the scraping session."""
+        old_phase = self.current_phase
+        self.current_phase = new_phase
+        logger.info(f"Phase transition: {old_phase} -> {new_phase}")
+    
+    def _mark_all_markets_clicked(self):
+        """Mark that the 'all markets' button has been clicked."""
+        self.all_markets_clicked = True
+        self._update_phase("markets_expanded")
+        self._record_session_action("CLICK_ALL_MARKETS", "Successfully clicked 'all markets' button")
+        logger.info("Marked 'all markets' button as clicked")
     
     def _reinit_llm_agent_with_new_key(self):
         """Reinitialize the LLM agent with a new API key after rotation."""
@@ -222,38 +262,7 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
             # Create the LLM agent for intelligent decision making
             self.llm_agent = ChatAgent(
                 model=model,
-                system_message="""You are an intelligent web scraping assistant that analyzes web page content and determines the best actions to take for scraping betting odds markets.
-
-Your task is to:
-1. Analyze the current page state (buttons, content, structure)
-2. Understand the user's goal (scraping all markets)
-3. Determine the next best action to achieve that goal
-4. Return a clear action command
-
-IMPORTANT: For betting odds sites like oddschecker, you MUST click on market buttons to load the market data via AJAX. Look for buttons with text like:
-- "Vincente" (Winner)
-- "Totale gol - Under/Over" (Total Goals)
-- "Handicap Asiatico" (Asian Handicap)
-- "Margine Vittoria" (Victory Margin)
-- "Risultato Esatto" (Exact Result)
-- "Primo Tempo / Secondo Tempo" (First Half/Second Half)
-- "Tutti i Mercati" (All Markets)
-
-Available actions:
-- CLICK_BUTTON:"button text" - Click a specific button (use exact button text)
-- WAIT:seconds - Wait for specified seconds
-- SCROLL:direction - Scroll up/down/left/right
-- CHECK_CONTENT - Analyze if goal is achieved
-- STOP - Stop if goal is achieved or no more actions needed
-
-PRIORITY RULES:
-1. ALWAYS click market buttons first - these load the actual odds data
-2. Click "Tutti i Mercati" (All Markets) if available to expand all markets
-3. Click individual market buttons one by one to load their data
-4. Wait after each click for AJAX to load
-5. Only stop when all market buttons have been clicked and data loaded
-
-Always prioritize user safety and avoid clicking suspicious elements. Be thorough in your analysis."""
+                system_message=WEB_SCRAPING_AGENT_SYSTEM_PROMPT
             )
             
             logger.info("LLM agent reinitialized with new API key")
@@ -329,6 +338,7 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
             odds_pattern = re.compile(r'\b\d+\.\d+\b')
             
             changes = []
+            processed_containers = set()
             
             # Look for new elements with odds in the after HTML
             for element in soup_after.find_all(['div', 'tr', 'td', 'span', 'button']):
@@ -340,17 +350,43 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
                     # Simple check: if this exact HTML string is not in before HTML, it's new
                     if element_str not in before_html:
                         # Find the parent container that likely contains the full market data
-                        container = element.find_parent(['div', 'section', 'article', 'tr'])
+                        # Look for any container that might hold market data (table, div, section, article)
+                        container = element.find_parent(['table', 'div', 'section', 'article'])
                         if not container:
-                            container = element
+                            # If no container found, skip this element
+                            continue
                         
-                        # Extract structured data from this container
-                        change_data = {
-                            'container_text': container.get_text(strip=True),
-                            'market_type': self._identify_market_type_from_text(container.get_text(strip=True)),
-                            'timestamp': time.time()
-                        }
-                        changes.append(change_data)
+                        if container:
+                            # Get a unique identifier for this container to avoid duplicates
+                            container_id = str(container)
+                            if container_id in processed_containers:
+                                continue
+                            processed_containers.add(container_id)
+                            
+                            # Only process containers that look like actual market tables/containers
+                            # Skip individual rows or small elements that are just part of a larger market
+                            container_text = container.get_text(strip=True)
+                            
+                            # Check if this container has enough structure to be a market
+                            # Look for multiple odds values and some text content
+                            odds_matches = odds_pattern.findall(container_text)
+                            
+                            # Skip if this looks like just a single row (few odds values and short text)
+                            if len(odds_matches) < 3 or len(container_text) < 20:
+                                continue
+                            
+                            # Skip if this looks like just a single betting option (e.g., "Milan1.44")
+                            # A proper market should have multiple options or bookmakers
+                            if len(odds_matches) < 6 and not any(keyword in container_text.lower() for keyword in ['vincente', 'pareggio', 'sconfitta', 'over', 'under', 'totale']):
+                                continue
+                            
+                            # Extract structured data from this container
+                            change_data = {
+                                'container_text': container_text,
+                                'market_type': self._identify_market_type_from_text(container_text),
+                                'timestamp': time.time()
+                            }
+                            changes.append(change_data)
             
             logger.info(f"Found {len(changes)} page changes with new market data")
             return changes
@@ -407,8 +443,20 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
             all_markets = []
             seen_containers = set()
             
-            # Find all odds containers
-            odds_containers = await self.page.query_selector_all('div[class*="market"], div[class*="odds"], div[class*="betting"], table, tr')
+            # Use LLM to find odds container selectors dynamically
+            page_html = await self.page.content()
+            
+            user_goal = "find all containers (divs, tables, sections) that contain betting odds data. These are elements that hold market information like odds values, betting options, and market names."
+            previous_actions = "Capturing market data after AJAX load"
+            
+            # Get LLM-suggested selectors for odds containers
+            container_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
+            
+            if not container_selector:
+                logger.warning("LLM could not suggest selectors for odds containers, using minimal fallback")
+                odds_containers = await self.page.query_selector_all('div, table')
+            else:
+                odds_containers = await self.page.query_selector_all(container_selector)
             
             for container in odds_containers:
                 try:
@@ -461,17 +509,41 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
             
             # For each change, try to find the corresponding container and extract structured data
             market_data = []
+            processed_containers = set()
+            
             for change in changes:
                 # Look for containers that match the change
-                containers = await self.page.query_selector_all('div, table, tr')
+                # Use LLM to find container selectors dynamically
+                page_html = await self.page.content()
+                
+                user_goal = "find all containers (divs, tables, sections) that contain betting markets or odds data. These are elements that hold market information and betting options."
+                previous_actions = "Finding containers for market data extraction"
+                
+                # Get LLM-suggested selectors for market containers
+                container_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
+                
+                if not container_selector:
+                    logger.warning("LLM could not suggest selectors for market containers, using minimal fallback")
+                    containers = await self.page.query_selector_all('div, table')
+                else:
+                    containers = await self.page.query_selector_all(container_selector)
                 
                 for container in containers:
                     try:
                         container_text = await container.evaluate('el => el.innerText')
+                        
+                        # Check if this container matches the change (contains the same text)
                         if change['container_text'] in container_text:
+                            # Get a unique identifier for this container to avoid duplicates
+                            container_id = await container.evaluate('el => el.outerHTML.slice(0,200)')
+                            if container_id in processed_containers:
+                                continue
+                            processed_containers.add(container_id)
+                            
                             # Extract structured data from this container
                             structured_data = await self._extract_structured_odds_data(container)
                             
+                            # Only process if it's a proper market structure (not just text)
                             if structured_data and structured_data.get('structure') != 'text':
                                 # Check if this market has already been processed
                                 market_name = structured_data.get('market_name', 'Unknown Market')
@@ -479,6 +551,7 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
                                     structured_data['source'] = 'page_diff'
                                     market_data.append(structured_data)
                                     self._mark_market_as_processed(market_name)
+                                    logger.info(f"Added market from diff: {market_name}")
                                     break
                                 else:
                                     logger.info(f"Skipping already processed market from diff: {market_name}")
@@ -506,27 +579,21 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
             return []
         
         try:
-            button_selectors = [
-                'button[class*="market"]',
-                'button[class*="odds"]',
-                'button[class*="betting"]',
-                'a[class*="market"]',
-                'a[class*="odds"]',
-                'a[class*="betting"]',
-                '[onclick*="market"]',
-                '[onclick*="odds"]',
-                '[onclick*="betting"]',
-                'button[class*="_2lrskQ"]',
-                'button[class*="market-button"]',
-                'button[class*="odds-button"]',
-                'button[class*="betting-button"]',
-                'button',
-                'a[role="button"]',
-                '[onclick]',
-                '[class*="clickable"]',
-                '[class*="selectable"]',
-                '[class*="expandable"]'
-            ]
+            # Use LLM to find market button selectors dynamically
+            page_html = await self.page.content()
+            
+            user_goal = "find all clickable elements (buttons, links, divs) that are market buttons or betting controls. These are elements that when clicked will load or expand betting markets. Look for buttons with text like 'Vincente', 'Totale gol', 'Handicap Asiatico', 'Risultato Esatto', etc. Also include any expansion buttons like 'Show More', 'All Markets', 'Tutti i Mercati'."
+            previous_actions = "Analyzing page for market buttons"
+            
+            # Get LLM-suggested selectors for market buttons
+            button_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
+            
+            if not button_selector:
+                logger.warning("LLM could not suggest selectors for market buttons, using minimal fallback")
+                # Minimal fallback - only the most generic selectors
+                button_selectors = ['button', 'a[role="button"]']
+            else:
+                button_selectors = [button_selector]
             
             float_regex = re.compile(r'^\d+(\.\d+)?$')
             market_keywords = [
@@ -599,8 +666,20 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
             title = await self.page.title()
             url = self.page.url
             
-            # Get all visible buttons and links
-            buttons = await self.page.query_selector_all('button, a[role="button"], [onclick], a[href]')
+            # Use LLM to find button selectors dynamically
+            page_html = await self.page.content()
+            
+            # Find buttons using LLM
+            button_user_goal = "find all clickable elements (buttons, links, divs) that are interactive controls on the page"
+            button_previous_actions = "Analyzing page for interactive elements"
+            button_selector = self._llm_find_selector(page_html, button_user_goal, button_previous_actions)
+            
+            if not button_selector:
+                logger.warning("LLM could not suggest button selectors, using minimal fallback")
+                buttons = await self.page.query_selector_all('button, a[role="button"]')
+            else:
+                buttons = await self.page.query_selector_all(button_selector)
+            
             button_info = []
             
             for button in buttons:
@@ -624,8 +703,17 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
                 except Exception:
                     continue
             
-            # Get all divs that might be market containers
-            market_containers = await self.page.query_selector_all('div[class*="market"], div[class*="odds"], div[class*="betting"], div[class*="selection"], div[class*="price"]')
+            # Use LLM to find market container selectors dynamically
+            container_user_goal = "find all containers (divs, sections, articles) that contain betting markets or odds data"
+            container_previous_actions = "Analyzing page for market containers"
+            container_selector = self._llm_find_selector(page_html, container_user_goal, container_previous_actions)
+            
+            if not container_selector:
+                logger.warning("LLM could not suggest container selectors, using minimal fallback")
+                market_containers = await self.page.query_selector_all('div, section, article')
+            else:
+                market_containers = await self.page.query_selector_all(container_selector)
+            
             container_info = []
             
             for container in market_containers:
@@ -696,11 +784,17 @@ Always prioritize user safety and avoid clicking suspicious elements. Be thoroug
                 
                 logger.info(f"Analyzing page state: {buttons_count} buttons, {market_containers_count} containers, {market_buttons_count} market buttons, {current_market_count} current markets, {collected_markets_count} collected")
                 
+                # Get session summary for context
+                session_summary = self._get_session_summary()
+                
                 # Prepare the prompt for the LLM
                 prompt = f"""Current page state:
 Title: {page_info.get('title', 'Unknown')}
 URL: {page_info.get('url', 'Unknown')}
 Body preview: {page_info.get('body_preview', 'No content')}
+
+Current phase: {self.current_phase}
+All markets button clicked: {self.all_markets_clicked}
 
 Available buttons:
 {json.dumps(page_info.get('buttons', []), indent=2)}
@@ -714,17 +808,26 @@ Market buttons found:
 Current market count: {page_info.get('current_market_count', 0)}
 Collected markets: {page_info.get('collected_markets_count', 0)}
 
+SESSION MEMORY - Previous actions taken:
+{session_summary}
+
 User goal: {instruction}
 
 CRITICAL INSTRUCTIONS FOR ODDSCHECKER:
 1. You MUST click market buttons to load odds data via AJAX
-2. Look for buttons like "Vincente", "Totale gol - Under/Over", "Handicap Asiatico", etc.
+2. Look for buttons like "Vincente", "Totale gol", "Handicap Asiatico", etc.
 3. Click "Tutti i Mercati" first if available to expand all markets
 4. Then click each individual market button one by one
 5. Wait after each click for AJAX to load
 6. Only stop when all market buttons have been clicked
 
-Based on the current page state and user goal, what is the next best action? 
+IMPORTANT SESSION CONTEXT:
+- The "all markets" button can be clicked after clicking a market to expand all categories
+- Use the session memory to avoid repeating actions unnecessarily
+- Focus on clicking individual market buttons to collect odds data
+- The "all markets" button is used to reveal additional market categories
+
+Based on the current page state, session memory, and user goal, what is the next best action? 
 Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tutti i Mercati", WAIT:3, STOP, etc.)"""
 
                 # Create the human message
@@ -743,7 +846,7 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             except Exception as e:
                 error_str = str(e).lower()
                 if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                    logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                    logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
                     
                     # Record the rate limit error
                     api_key_manager.record_rate_limit_error(self.model_type)
@@ -799,6 +902,9 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
                 button_text = action.split(":", 1)[1].strip('"')
                 logger.info(f"Attempting to click button: {button_text}")
                 
+                # Check if this is the "all markets" button
+                is_all_markets_button = any(keyword in button_text.lower() for keyword in ['all markets', 'tutti i mercati', 'all mercati'])
+                
                 # Capture page state before clicking
                 before_html = await self._capture_page_snapshot()
                 
@@ -819,6 +925,13 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
                             await element.click()
                             logger.info(f"Successfully clicked market button: {text}")
                             
+                            # Record the action
+                            if is_all_markets_button:
+                                self._mark_all_markets_clicked()
+                                self._record_session_action("CLICK_BUTTON", f"All markets button: {text}")
+                            else:
+                                self._record_session_action("CLICK_BUTTON", f"Market button: {text}")
+                            
                             # Use diff-based capture to find exactly what changed
                             await self._capture_market_data_with_diff(before_html)
                             
@@ -831,6 +944,7 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
                 
                 if not button_clicked:
                     logger.warning(f"Could not find or click market button: {button_text}")
+                    self._record_session_action("FAILED_CLICK", f"Could not click: {button_text}")
                     return False
                 
                 return True
@@ -838,12 +952,14 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             elif action.startswith("WAIT:"):
                 seconds = int(action.split(":", 1)[1])
                 logger.info(f"Waiting for {seconds} seconds")
+                self._record_session_action("WAIT", f"{seconds} seconds")
                 await asyncio.sleep(seconds)
                 return True
             
             elif action.startswith("SCROLL:"):
                 direction = action.split(":", 1)[1].lower()
                 logger.info(f"Scrolling {direction}")
+                self._record_session_action("SCROLL", direction)
                 
                 if direction == "down":
                     await self.page.evaluate("window.scrollBy(0, 500)")
@@ -859,27 +975,25 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             
             elif action == "STOP":
                 logger.info("LLM instructed to stop")
+                self._record_session_action("STOP", "LLM decided to stop")
                 return True
             
             else:
                 logger.warning(f"Unknown action: {action}")
+                self._record_session_action("UNKNOWN_ACTION", action)
                 return False
                 
         except Exception as e:
             logger.error(f"Error executing action {action}: {e}")
+            self._record_session_action("ERROR", f"Error executing {action}: {str(e)}")
             return False
     
     async def _autonomous_interaction(self, instruction: str, max_iterations: int = 15) -> List[Dict[str, Any]]:
         """Autonomously interact with the page based on the instruction."""
         logger.info(f"Starting autonomous interaction with instruction: {instruction}")
         
-        # Reset collected markets and duplicate tracking for this interaction
-        self.collected_markets = []
-        self.processed_markets.clear()
-        self.market_states = {}
-        self.last_market_count = 0
-        self.page_snapshots = []
-        logger.info("Reset duplicate tracking for autonomous interaction")
+        # Reset session state for this interaction
+        self._reset_session_state()
         
         # Initial capture of page state
         logger.info("Capturing initial page state...")
@@ -915,6 +1029,7 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
         
         # Phase 2: Click individual market buttons and capture data
         logger.info("Phase 2: Clicking individual market buttons and capturing data...")
+        self._update_phase("collecting_markets")
         
         for iteration in range(max_iterations):
             logger.info(f"Market button iteration {iteration + 1}/{max_iterations}")
@@ -974,6 +1089,7 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
         """Try clicking market buttons manually when LLM approach fails."""
         try:
             logger.info("Attempting manual market button clicking...")
+            self._record_session_action("MANUAL_CLICKING", "Starting manual market button clicking")
             
             # Get all market buttons
             market_buttons = await self._get_market_buttons()
@@ -997,6 +1113,7 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
                             
                             await element.click()
                             logger.info(f"Manually clicked market button: {button['text']}")
+                            self._record_session_action("MANUAL_CLICK", button['text'])
                             
                             # Use diff-based capture with structured extraction
                             await self._capture_market_data_with_diff(before_html)
@@ -1008,12 +1125,15 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
                                 break
                 except Exception as e:
                     logger.warning(f"Error manually clicking button: {e}")
+                    self._record_session_action("ERROR_MANUAL_CLICK", f"{button.get('text', 'unknown')}: {str(e)}")
                     continue
             
             logger.info(f"Manual clicking completed. Clicked {clicked_count} unprocessed buttons.")
+            self._record_session_action("MANUAL_CLICKING_COMPLETE", f"Clicked {clicked_count} buttons")
             
         except Exception as e:
             logger.error(f"Error in manual market clicking: {e}")
+            self._record_session_action("ERROR_MANUAL_CLICKING", str(e))
     
     async def scrape_odds_markets(self, url: str, team: str, vs_team: str, competition: str) -> Dict[str, Any]:
         """
@@ -1049,10 +1169,8 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             logger.info(f"Starting LLM-driven odds market scraping for {team} vs {vs_team} in {competition}")
             logger.info(f"URL: {url}")
             
-            # Reset duplicate tracking for this scraping session
-            self.processed_markets.clear()
-            self.collected_markets = []
-            logger.info("Reset duplicate tracking for new scraping session")
+            # Reset session state for this scraping session
+            self._reset_session_state()
             
             await self._init_browser()
             
@@ -1063,6 +1181,7 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             # Navigate to the URL
             await self.page.goto(url, wait_until='networkidle')
             logger.info("Successfully navigated to the page")
+            self._record_session_action("NAVIGATE", f"Navigated to {url}")
             
             # Step 1: Find and click the "all markets" button
             logger.info("Step 1: Looking for 'all markets' button...")
@@ -1076,15 +1195,21 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             # Click the all markets button
             await all_markets_button.click()
             logger.info("Clicked 'all markets' button")
+            self._mark_all_markets_clicked()
             
-            # Wait for content to load
-            await asyncio.sleep(3)
+            # Wait for popup to appear and content to stabilize
+            popup_appeared = await self._wait_for_popup_to_appear(max_wait_time=10)
+            if not popup_appeared:
+                logger.warning("Popup did not appear, but continuing with scraping...")
+            
+            await self._wait_for_network_idle(max_wait_time=5)
+            await self._wait_for_content_stabilization(max_wait_time=5)
             
             # Step 2: Use LLM to find the popup or market container
             logger.info("Step 2: Using LLM to find markets popup or container...")
             after_html = await self._capture_page_snapshot()
             
-            user_goal = f"scrape all betting odds markets for {team} vs {vs_team} in {competition}"
+            user_goal = f"find the main container or popup that contains ALL the betting odds markets for {team} vs {vs_team} in {competition}. This should be a large container that holds multiple market categories like 'Vincente', 'Totale gol', 'Handicap Asiatico', etc. Do NOT select individual buttons or small elements - find the main container that contains many market elements."
             previous_actions = "Clicked 'Tutti i Mercati' button to expand all markets"
             
             # Use LLM to find the selector for the popup or market container
@@ -1110,8 +1235,8 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             logger.info("Step 3: Using LLM to find market categories...")
             container_html = await popup_or_container.evaluate('el => el.outerHTML')
             
-            user_goal = f"find all market categories (like 'Vincente', 'Totale gol', 'Handicap Asiatico') within the markets container"
-            previous_actions = f"Found markets container using selector: {selector}"
+            user_goal = "find all market category containers (like 'Esiti incontro', 'Risultato finale', 'Handicap Asiatico', 'Over/Under') within the markets popup. These are the main category sections that contain multiple individual markets within them."
+            previous_actions = "Found markets popup"
             
             category_selector = self._llm_find_selector(container_html, user_goal, previous_actions)
             
@@ -1205,6 +1330,10 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             all_odds_data = {}
             
             for category_index, category in enumerate(market_categories):
+                if category['name'] in self.processed_categories:
+                    logger.info(f"Skipping already processed category: {category['name']}")
+                    continue
+                self.processed_categories.add(category['name'])
                 logger.info(f"Processing category {category_index + 1}/{len(market_categories)}: {category['name']}")
                 
                 # Click on the category to expand it (if needed)
@@ -1262,6 +1391,10 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             
             # Process each market section
             for section_index, section in enumerate(market_sections):
+                if section['name'] in self.processed_categories:
+                    logger.info(f"Skipping already processed section: {section['name']}")
+                    continue
+                self.processed_categories.add(section['name'])
                 logger.info(f"Processing market section {section_index + 1}/{len(market_sections)}: {section['name']}")
                 
                 # Get all markets in this section
@@ -1364,8 +1497,21 @@ Return only the action command (e.g., CLICK_BUTTON:"Vincente", CLICK_BUTTON:"Tut
             page_text = await self.page.evaluate('() => document.body.innerText')
             logger.info(f"Page text preview: {page_text[:500]}...")
             
-            # Look for any div that contains market-related text
-            all_divs = await self.page.query_selector_all('div, section, article')
+            # Use LLM to find container selectors dynamically
+            page_html = await self.page.content()
+            
+            user_goal = "find all containers (divs, sections, articles) that might contain betting markets or odds data"
+            previous_actions = "Fallback search for market sections"
+            
+            # Get LLM-suggested selectors for containers
+            container_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
+            
+            if not container_selector:
+                logger.warning("LLM could not suggest selectors for containers in fallback, using minimal fallback")
+                all_divs = await self.page.query_selector_all('div, section, article')
+            else:
+                all_divs = await self.page.query_selector_all(container_selector)
+            
             logger.info(f"Found {len(all_divs)} total containers on page")
             
             for i, div in enumerate(all_divs[:50]):  # Check first 50 divs to avoid too much processing
@@ -1582,8 +1728,20 @@ Return only the valid market names as a JSON list.
             
             markets = []
             
-            # Look for any clickable elements that might be markets
-            clickables = await section['element'].query_selector_all('button, a, [onclick], [class*="clickable"]')
+            # Use LLM to find clickable element selectors dynamically
+            section_html = await section['element'].evaluate('el => el.outerHTML')
+            
+            user_goal = "find all clickable elements (buttons, links, divs) within this section that might be market buttons or betting controls"
+            previous_actions = f"Fallback search for markets in section: {section['name']}"
+            
+            # Get LLM-suggested selectors for clickable elements
+            clickable_selector = self._llm_find_selector(section_html, user_goal, previous_actions)
+            
+            if not clickable_selector:
+                logger.warning("LLM could not suggest selectors for clickable elements in fallback, using minimal fallback")
+                clickables = await section['element'].query_selector_all('button, a')
+            else:
+                clickables = await section['element'].query_selector_all(clickable_selector)
             
             for clickable in clickables:
                 try:
@@ -1609,32 +1767,76 @@ Return only the valid market names as a JSON list.
             return []
 
     async def _find_all_markets_button(self):
-        """Find the 'all markets' button on the page using LLM-driven approach only. No hardcoded fallback."""
-        try:
-            if not self.page:
-                logger.error("Page is not initialized")
-                return None
-            
-            logger.info("Using LLM to find 'all markets' button...")
-            # Get the page HTML for LLM analysis
-            page_html = await self.page.content()
-            user_goal = "find the 'all markets' or 'tutti i mercati' button that expands all available betting markets"
-            previous_actions = "Navigated to the betting odds page"
-            # Use LLM to find the all markets button selector
-            button_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
-            if not button_selector:
-                logger.error("LLM could not suggest a selector for 'all markets' button. Terminating.")
-                raise Exception("LLM could not suggest a selector for 'all markets' button.")
-            # Use the LLM-suggested selector to find the button
-            element = await self.page.query_selector(button_selector)
-            if element and await element.is_visible():
-                logger.info(f"Found 'all markets' button using LLM selector: {button_selector}")
-                return element
-            logger.error(f"Could not find 'all markets' button with LLM selector: {button_selector}. Terminating.")
-            raise Exception(f"Could not find 'all markets' button with LLM selector: {button_selector}")
-        except Exception as e:
-            logger.error(f"Error finding all markets button: {e}")
-            raise
+        """Find the 'all markets' button on the page using LLM-driven approach with retries."""
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                if not self.page:
+                    logger.error("Page is not initialized")
+                    return None
+                
+                logger.info(f"Using LLM to find 'all markets' button (attempt {retry_count + 1}/{max_retries})...")
+                
+                # Get the page HTML for LLM analysis
+                page_html = await self.page.content()
+                
+                # Try different approaches for finding the button
+                if retry_count == 0:
+                    # First attempt: Look for the most specific "all markets" button
+                    user_goal = "find the 'all markets' or 'tutti i mercati' button that expands all available betting markets. This is NOT an individual market button like 'Vincente', 'Pareggio', or 'Sconfitta' - it is a control button that reveals more market categories. Look for buttons with text like 'All Markets', 'Tutti i Mercati', 'Show More', 'Expand', or 'More Markets' that are typically in headers, toolbars, or navigation areas."
+                    previous_actions = "Navigated to the betting odds page"
+                elif retry_count == 1:
+                    # Second attempt: Look for any expansion/control button
+                    user_goal = "find any button that expands, shows more, or reveals additional betting markets. Look for buttons with text containing 'more', 'expand', 'show', 'all', 'tutti', 'mercati', 'markets', 'additional', 'extra' that are not individual betting options."
+                    previous_actions = "First attempt to find 'all markets' button failed, trying broader search"
+                else:
+                    # Third attempt: Look for any clickable element that might expand markets
+                    user_goal = "find any clickable element (button, link, or div) that might expand or show more betting markets. Look for elements with text suggesting expansion, more content, or additional options."
+                    previous_actions = "Previous attempts failed, trying most generic approach"
+                
+                # Use LLM to find the all markets button selector
+                button_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
+                
+                if not button_selector:
+                    logger.warning(f"LLM could not suggest a selector for 'all markets' button on attempt {retry_count + 1}")
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        logger.info(f"Retrying in 2 seconds...")
+                        await asyncio.sleep(2)
+                        continue
+                    else:
+                        logger.error("All attempts to find 'all markets' button failed. Terminating.")
+                        raise Exception("LLM could not suggest a selector for 'all markets' button after multiple attempts.")
+                
+                # Use the LLM-suggested selector to find the button
+                element = await self.page.query_selector(button_selector)
+                if element and await element.is_visible():
+                    logger.info(f"Found 'all markets' button using LLM selector: {button_selector}")
+                    return element
+                
+                logger.warning(f"Could not find 'all markets' button with LLM selector: {button_selector} on attempt {retry_count + 1}")
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Retrying in 2 seconds...")
+                    await asyncio.sleep(2)
+                    continue
+                else:
+                    logger.error("All attempts to find 'all markets' button failed. Terminating.")
+                    raise Exception(f"Could not find 'all markets' button with any LLM selector after {max_retries} attempts.")
+                    
+            except Exception as e:
+                logger.error(f"Error finding all markets button on attempt {retry_count + 1}: {e}")
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Retrying in 2 seconds...")
+                    await asyncio.sleep(2)
+                    continue
+                else:
+                    raise e
+        
+        return None
 
     async def _find_markets_popup(self):
         """Find the markets popup that appears after clicking 'all markets' button using LLM only. No hardcoded fallback."""
@@ -1668,34 +1870,105 @@ Return only the valid market names as a JSON list.
                 return []
             logger.info("Using LLM to find market categories in popup...")
             popup_html = await popup.evaluate('el => el.outerHTML')
-            user_goal = "find all market category buttons (like 'Vincente', 'Totale gol', 'Handicap Asiatico') within the markets popup"
+            user_goal = "find all market category containers (like 'Esiti incontro', 'Risultato finale', 'Handicap Asiatico', 'Over/Under') within the markets popup. These are the main category sections that contain multiple individual markets within them."
             previous_actions = "Found markets popup"
             category_selector = self._llm_find_selector(popup_html, user_goal, previous_actions)
             if not category_selector:
                 logger.error("LLM could not suggest a selector for market categories. Terminating.")
                 raise Exception("LLM could not suggest a selector for market categories.")
+            
+            # Debug: Log the selector and HTML content
+            logger.info(f"Using selector: {category_selector}")
+            logger.debug(f"Popup HTML length: {len(popup_html)}")
+            
             categories = []
             elements = await popup.query_selector_all(category_selector)
-            for element in elements:
+            logger.info(f"Found {len(elements)} elements with selector: {category_selector}")
+            
+            for i, element in enumerate(elements):
                 try:
-                    if await element.is_visible():
-                        text = await element.text_content()
-                        if text and text.strip():
-                            categories.append({
-                                'name': text.strip(),
-                                'element': element
-                            })
+                    is_visible = await element.is_visible()
+                    text = await element.text_content()
+                    logger.debug(f"Element {i}: visible={is_visible}, text='{text}'")
+                    
+                    if is_visible and text and text.strip():
+                        categories.append({
+                            'name': text.strip(),
+                            'element': element
+                        })
                 except Exception as e:
-                    logger.warning(f"Error processing category element: {e}")
+                    logger.warning(f"Error processing category element {i}: {e}")
                     continue
+            
             categories = self._llm_filter_market_candidates(categories)
             logger.info(f"Found {len(categories)} market categories using LLM")
+            
             if not categories:
-                logger.error("No market categories found with LLM selector. Terminating.")
-                raise Exception("No market categories found with LLM selector.")
+                # Instead of terminating, try a more generic approach
+                logger.warning("No market categories found with LLM selector. Trying fallback approach...")
+                return await self._get_market_categories_fallback(popup)
+            
             return categories
         except Exception as e:
             logger.error(f"Error getting market categories: {e}")
+            raise
+
+    async def _get_market_categories_fallback(self, popup):
+        """Fallback method to find market categories using LLM-driven approach."""
+        try:
+            logger.info("Trying LLM-driven fallback approach for market categories...")
+            
+            # Use LLM to find category selectors dynamically
+            popup_html = await popup.evaluate('el => el.outerHTML')
+            
+            user_goal = "find all elements that could be market category buttons or controls within this popup. Look for any clickable elements that might represent market categories."
+            previous_actions = "LLM fallback search for market categories"
+            
+            # Get LLM-suggested selectors for category elements
+            category_selector = self._llm_find_selector(popup_html, user_goal, previous_actions)
+            
+            if not category_selector:
+                logger.warning("LLM could not suggest selectors for categories in fallback, using minimal fallback")
+                # Minimal fallback - only the most generic selectors
+                fallback_selectors = ['button', 'a[role="button"]']
+            else:
+                fallback_selectors = [category_selector]
+            
+            for selector in fallback_selectors:
+                try:
+                    elements = await popup.query_selector_all(selector)
+                    logger.info(f"Fallback selector '{selector}' found {len(elements)} elements")
+                    
+                    categories = []
+                    for element in elements:
+                        try:
+                            if await element.is_visible():
+                                text = await element.text_content()
+                                if text and text.strip() and len(text.strip()) > 2:
+                                    # Filter out obvious non-market elements
+                                    text_lower = text.strip().lower()
+                                    # Accept any text that's not too short and doesn't look like odds values
+                                    if len(text.strip()) > 2 and not re.match(r'^\d+\.\d+$', text.strip()):
+                                        categories.append({
+                                            'name': text.strip(),
+                                            'element': element
+                                        })
+                        except Exception as e:
+                            continue
+                    
+                    if categories:
+                        logger.info(f"Fallback selector '{selector}' found {len(categories)} market categories")
+                        return categories
+                        
+                except Exception as e:
+                    logger.debug(f"Fallback selector '{selector}' failed: {e}")
+                    continue
+            
+            logger.error("All fallback approaches failed to find market categories")
+            raise Exception("No market categories found with any approach")
+            
+        except Exception as e:
+            logger.error(f"Error in fallback market categories: {e}")
             raise
 
     async def _get_markets_in_category(self, category):
@@ -1712,29 +1985,100 @@ Return only the valid market names as a JSON list.
             if not market_selector:
                 logger.error(f"LLM could not suggest selector for markets in category '{category['name']}'. Terminating.")
                 raise Exception(f"LLM could not suggest selector for markets in category '{category['name']}'.")
+            
+            # Debug: Log the selector and HTML content
+            logger.info(f"Using selector: {market_selector}")
+            logger.debug(f"Category HTML length: {len(category_html)}")
+            
             markets = []
             elements = await category['element'].query_selector_all(market_selector)
-            for element in elements:
+            logger.info(f"Found {len(elements)} elements with selector: {market_selector}")
+            
+            for i, element in enumerate(elements):
                 try:
-                    if await element.is_visible():
-                        text = await element.text_content()
-                        if text and text.strip() and len(text.strip()) > 2:
-                            if not re.match(r'^\d+\.\d+$', text.strip()):
-                                markets.append({
-                                    'name': text.strip(),
-                                    'element': element
-                                })
+                    is_visible = await element.is_visible()
+                    text = await element.text_content()
+                    logger.debug(f"Element {i}: visible={is_visible}, text='{text}'")
+                    
+                    if is_visible and text and text.strip() and len(text.strip()) > 2:
+                        if not re.match(r'^\d+\.\d+$', text.strip()):
+                            markets.append({
+                                'name': text.strip(),
+                                'element': element
+                            })
                 except Exception as e:
-                    logger.warning(f"Error processing market element: {e}")
+                    logger.warning(f"Error processing market element {i}: {e}")
                     continue
+            
             markets = self._llm_filter_market_candidates(markets)
             logger.info(f"Found {len(markets)} markets in category '{category['name']}' using LLM selector: {market_selector}")
+            
             if not markets:
-                logger.error(f"No markets found with LLM selector in category '{category['name']}'. Terminating.")
-                raise Exception(f"No markets found with LLM selector in category '{category['name']}'.")
+                # Instead of terminating, try a more generic approach
+                logger.warning(f"No markets found with LLM selector in category '{category['name']}'. Trying fallback approach...")
+                return await self._get_markets_in_category_fallback(category)
+            
             return markets
         except Exception as e:
             logger.error(f"Error getting markets in category {category['name']}: {e}")
+            raise
+
+    async def _get_markets_in_category_fallback(self, category):
+        """Fallback method to find markets in a category using LLM-driven approach."""
+        try:
+            logger.info(f"Trying LLM-driven fallback approach for markets in category: {category['name']}")
+            
+            # Use LLM to find market selectors dynamically
+            category_html = await category['element'].evaluate('el => el.outerHTML')
+            
+            user_goal = f"find all elements that could be individual market buttons or controls within the category '{category['name']}'. Look for any clickable elements that might represent individual markets."
+            previous_actions = f"LLM fallback search for markets in category: {category['name']}"
+            
+            # Get LLM-suggested selectors for market elements
+            market_selector = self._llm_find_selector(category_html, user_goal, previous_actions)
+            
+            if not market_selector:
+                logger.warning("LLM could not suggest selectors for markets in fallback, using minimal fallback")
+                # Minimal fallback - only the most generic selectors
+                fallback_selectors = ['button', 'a[role="button"]']
+            else:
+                fallback_selectors = [market_selector]
+            
+            for selector in fallback_selectors:
+                try:
+                    elements = await category['element'].query_selector_all(selector)
+                    logger.info(f"Fallback selector '{selector}' found {len(elements)} elements")
+                    
+                    categories = []
+                    for element in elements:
+                        try:
+                            if await element.is_visible():
+                                text = await element.text_content()
+                                if text and text.strip() and len(text.strip()) > 2:
+                                    # Filter out obvious non-market elements
+                                    text_lower = text.strip().lower()
+                                    # Accept any text that's not too short and doesn't look like odds values
+                                    if len(text.strip()) > 2 and not re.match(r'^\d+\.\d+$', text.strip()):
+                                        categories.append({
+                                            'name': text.strip(),
+                                            'element': element
+                                        })
+                        except Exception as e:
+                            continue
+                    
+                    if categories:
+                        logger.info(f"Fallback selector '{selector}' found {len(categories)} market categories")
+                        return categories
+                        
+                except Exception as e:
+                    logger.debug(f"Fallback selector '{selector}' failed: {e}")
+                    continue
+            
+            logger.error("All fallback approaches failed to find markets in category '{category['name']}'")
+            raise Exception(f"No markets found in category '{category['name']}' with any approach")
+            
+        except Exception as e:
+            logger.error(f"Error in fallback markets for category {category['name']}: {e}")
             raise
 
     async def _click_category(self, category):
@@ -1744,9 +2088,11 @@ Return only the valid market names as a JSON list.
             if element and await element.is_visible():
                 await element.click()
                 logger.info(f"Clicked category: {category['name']}")
+                self._record_session_action("CLICK_CATEGORY", category['name'])
                 await asyncio.sleep(1)
         except Exception as e:
             logger.warning(f"Error clicking category {category['name']}: {e}")
+            self._record_session_action("ERROR_CLICK_CATEGORY", f"{category['name']}: {str(e)}")
     
     async def _click_market(self, market):
         """Click on a specific market to load its odds data."""
@@ -1755,8 +2101,10 @@ Return only the valid market names as a JSON list.
             if element and await element.is_visible():
                 await element.click()
                 logger.info(f"Clicked market: {market['name']}")
+                self._record_session_action("CLICK_MARKET", market['name'])
         except Exception as e:
             logger.warning(f"Error clicking market {market['name']}: {e}")
+            self._record_session_action("ERROR_CLICK_MARKET", f"{market['name']}: {str(e)}")
     
     async def _extract_odds_from_diff(self, before_html: str, after_html: str, market_name: str) -> Dict[str, Any]:
         """Extract odds data from HTML diff after clicking a market."""
@@ -1806,19 +2154,56 @@ Return only the valid market names as a JSON list.
             # Get the container's text content to identify the market type
             container_text = await container_element.evaluate('el => el.innerText')
             
+            # Skip if this looks like just a single row of odds data
+            # A proper market should have multiple betting options or bookmakers
+            import re
+            odds_pattern = re.compile(r'\b\d+\.\d+\b')
+            odds_matches = odds_pattern.findall(container_text)
+            
+            # If this looks like just a single row (e.g., "MilanPareggioCremonese1.441.451.42...")
+            # skip it as it's not a market container
+            if len(odds_matches) < 6 and len(container_text) < 100:
+                # Check if this looks like a single betting row
+                if any(team_name in container_text for team_name in ['Milan', 'Cremonese', 'Inter', 'Juventus', 'Roma', 'Lazio']):
+                    # This looks like a single row, not a market container
+                    return {}
+            
             # Try to identify the market type from the text
             market_type = self._identify_market_type(container_text)
             
             # Look for table structure (tr, td elements)
-            table_rows = await container_element.query_selector_all('tr')
+            # Use LLM to find table element selectors dynamically
+            container_html = await container_element.evaluate('el => el.outerHTML')
             
-            if table_rows:
+            table_user_goal = "find all table rows (tr elements) within this container that contain betting data"
+            table_previous_actions = "Extracting structured odds data from container"
+            table_selector = self._llm_find_selector(container_html, table_user_goal, table_previous_actions)
+            
+            if not table_selector:
+                logger.warning("LLM could not suggest selectors for table rows, using minimal fallback")
+                table_rows = await container_element.query_selector_all('tr')
+            else:
+                table_rows = await container_element.query_selector_all(table_selector)
+            
+            if table_rows and len(table_rows) > 1:  # Need at least 2 rows (header + data)
                 # This is a table structure - extract rows and columns
                 odds_table = []
                 headers = []
                 
                 for i, row in enumerate(table_rows):
-                    cells = await row.query_selector_all('td, th')
+                    # Use LLM to find cell selectors dynamically
+                    row_html = await row.evaluate('el => el.outerHTML')
+                    
+                    cell_user_goal = "find all table cells (td, th elements) within this table row"
+                    cell_previous_actions = f"Extracting cells from table row {i+1}"
+                    cell_selector = self._llm_find_selector(row_html, cell_user_goal, cell_previous_actions)
+                    
+                    if not cell_selector:
+                        logger.warning("LLM could not suggest selectors for table cells, using minimal fallback")
+                        cells = await row.query_selector_all('td, th')
+                    else:
+                        cells = await row.query_selector_all(cell_selector)
+                    
                     row_data = []
                     
                     for cell in cells:
@@ -1833,8 +2218,8 @@ Return only the valid market names as a JSON list.
                         else:
                             odds_table.append(row_data)
                 
-                # If we have a table structure, format it properly
-                if odds_table:
+                # If we have a proper table structure with multiple rows, format it properly
+                if odds_table and len(odds_table) > 0:
                     return {
                         'market_type': market_type,
                         'market_name': self._extract_market_name(container_text),
@@ -1845,7 +2230,17 @@ Return only the valid market names as a JSON list.
                     }
             
             # If no table structure, try to extract individual odds with context
-            odds_elements = await container_element.query_selector_all('[class*="odds"], [class*="price"], [class*="bet"], span, div')
+            # Use LLM to find odds element selectors dynamically
+            odds_user_goal = "find all elements that contain odds values or betting prices within this container"
+            odds_previous_actions = "Extracting individual odds from container"
+            odds_selector = self._llm_find_selector(container_html, odds_user_goal, odds_previous_actions)
+            
+            if not odds_selector:
+                logger.warning("LLM could not suggest selectors for odds elements, using minimal fallback")
+                odds_elements = await container_element.query_selector_all('span, div')
+            else:
+                odds_elements = await container_element.query_selector_all(odds_selector)
+            
             odds_data = []
             
             for element in odds_elements:
@@ -1861,7 +2256,8 @@ Return only the valid market names as a JSON list.
                 except Exception:
                     continue
             
-            if odds_data:
+            # Only return odds_list if we have multiple odds (indicating a proper market)
+            if odds_data and len(odds_data) > 3:
                 return {
                     'market_type': market_type,
                     'market_name': self._extract_market_name(container_text),
@@ -1870,14 +2266,18 @@ Return only the valid market names as a JSON list.
                     'timestamp': time.time()
                 }
             
-            # Fallback: return as text content
-            return {
-                'market_type': market_type,
-                'market_name': self._extract_market_name(container_text),
-                'structure': 'text',
-                'content': container_text,
-                'timestamp': time.time()
-            }
+            # Fallback: return as text content only if it looks substantial
+            if len(container_text) > 50 and len(odds_matches) > 3:
+                return {
+                    'market_type': market_type,
+                    'market_name': self._extract_market_name(container_text),
+                    'structure': 'text',
+                    'content': container_text,
+                    'timestamp': time.time()
+                }
+            
+            # If we get here, this doesn't look like a proper market container
+            return {}
             
         except Exception as e:
             logger.error(f"Error extracting structured odds data: {e}")
@@ -1911,7 +2311,9 @@ Return only the valid market names as a JSON list.
         
         while retry_count < max_retries:
             try:
-                if self.llm_agent is None:
+                # Create a dedicated agent for query selector functionality using flash model
+                selector_agent = self._create_selector_agent()
+                if selector_agent is None:
                     return None
                 
                 # Log brief summary instead of full content
@@ -1921,32 +2323,113 @@ Return only the valid market names as a JSON list.
                 prompt = f"""HTML Content:
 {html_content}
 
-You are a web scraping expert. Given this HTML content and user goal, suggest the best CSS selector.
+You are a web scraping expert. Given this HTML content and user goal, suggest the BEST and MOST SPECIFIC CSS selector.
 
 User Goal: {user_goal}
 Previous Actions: {previous_actions}
 
-IMPORTANT: Return ONLY a valid CSS selector that would best find the target elements. 
-Valid examples:
-- 'button[class*="market"]' (button with class containing "market")
-- 'div[class*="popup"]' (div with class containing "popup")
-- 'button:has-text("Vincente")' (Playwright selector foelec button containing text)
-- 'a[href*="market"]' (link with href containing "market")
-- '[class*="market-categories"]' (any element with class containing "market-categories")
+CRITICAL REQUIREMENTS:
+1. The selector MUST be specific enough to find ONLY the target elements
+2. The selector MUST be valid CSS/Playwright syntax
+3. The selector MUST work reliably across page refreshes
+4. Prefer attributes like id, data-*, aria-* over generic class names
+5. Avoid overly broad selectors like 'div' or 'button' alone
+6. The selector MUST actually exist in the provided HTML content
+7. DO NOT return the example selectors below - they are just examples to show the pattern
+8. ALWAYS prefer :has-text() variants for text-based selectors
 
-Do NOT return:
-- Action commands like "CLICK_BUTTON:Vincente"
-- Invalid selectors like "button:contains()" (use "button:has-text()" instead)
-- Just text without selectors
+CRITICAL DISTINCTION FOR "ALL MARKETS" BUTTON:
+When looking for the "all markets" or "tutti i mercati" button:
+- You are looking for a button that EXPANDS or SHOWS MORE markets
+- This is NOT an individual market button like "Vincente", "Pareggio", "Sconfitta"
+- This is NOT a market category like "Esiti incontro", "Risultato finale"
+- This button typically has text like "All Markets", "Tutti i Mercati", "Show More", "Expand", "More Markets"
+- This button is usually separate from the actual betting markets
+- This button is often in a header, toolbar, or navigation area
+- This button is designed to reveal additional market categories, not individual betting options
 
-If no good selector can be determined, return 'NONE'."""
+AVOID CONFUSION WITH EXISTING MARKETS:
+- Do NOT select buttons that are already visible individual markets (like "Vincente", "Pareggio", "Sconfitta")
+- Do NOT select market category containers that are already expanded
+- Do NOT select promotional or navigation elements
+- The "all markets" button is typically a control button, not a betting option itself
+
+IMPORTANT: For market category containers, you are looking for:
+- MAIN CONTAINERS that hold multiple betting markets (like "Esiti incontro", "Risultato finale", "Handicap Asiatico")
+- NOT individual market buttons (like "Vincente", "Pareggio", "Sconfitta")
+- NOT promotional elements (like "Bonus€€", "Promozioni", "Offerte")
+- NOT navigation elements (like "Menu", "Home", "Account")
+- NOT utility buttons (like "Close", "Back", "Settings")
+
+A market category container should:
+- Contain multiple individual betting options
+- Have a category title/header
+- Be part of the main betting interface
+- Not be promotional or navigational
+
+SELECTOR PRIORITY (in order of preference):
+1. ID selectors: '#specific-id'
+2. Data attributes: '[data-testid="button"]', '[data-market="winner"]'
+3. Aria attributes: '[aria-label="All Markets"]', '[role="button"]'
+4. Specific class combinations: 'button.market-button.primary'
+5. Text-based selectors: 'button:has-text("Vincente")' - ALWAYS use :has-text() for text matching
+6. Position-based: 'div:nth-child(2) button'
+
+TEXT-BASED SELECTOR RULES:
+- ALWAYS use :has-text() for matching text content
+- NEVER use :contains() (invalid syntax)
+- Prefer exact text matches: 'button:has-text("Vincente")'
+- For partial matches: 'button:has-text("Vincente", "exact")' for exact, 'button:has-text("Vincente", "partial")' for partial
+- Text-based selectors are often the most reliable for dynamic content
+
+EXAMPLES OF SELECTOR PATTERNS (DO NOT USE THESE EXACTLY - FIND SIMILAR ONES IN THE HTML):
+- 'button[data-testid="all-markets"]' (look for data-testid attributes)
+- '#markets-popup button' (look for ID attributes)
+- 'button[aria-label="Winner market"]' (look for aria-label attributes)
+- 'div[class*="market-categories"] button' (look for class names containing keywords)
+- 'button:has-text("SuperDuperBet")' (look for buttons with specific text - ALWAYS use :has-text())
+- 'button[data-market-type="winner"]' (look for data attributes)
+- 'div[class*="betting-container"] button' (look for class names containing keywords)
+
+INVALID EXAMPLES (DO NOT USE):
+- 'button' (too generic)
+- 'div' (too generic)
+- 'button:contains("text")' (invalid syntax, use :has-text() instead)
+- 'CLICK_BUTTON:text' (action command, not selector)
+- '.class' (too generic class)
+- 'button[class*="btn"]' (too generic class pattern)
+- Selectors that don't exist in the HTML
+- The exact example selectors above (they are just patterns)
+
+ANALYSIS STEPS:
+1. First, identify the exact target elements in the HTML
+2. Look for unique identifiers (id, data-*, aria-*)
+3. If no unique identifiers, find the most specific combination of attributes
+4. For text-based selection, ALWAYS use :has-text() syntax
+5. Test your selector mentally - would it find ONLY the target elements?
+6. Ensure the selector is specific enough to be reliable
+7. Verify the selector actually exists in the provided HTML
+8. Use the example patterns above as inspiration, but find actual selectors in the HTML
+
+IMPORTANT: 
+- Only return selectors that you can see actually exist in the HTML content above
+- Do not guess or make up selectors
+- Do not return the example selectors from above - they are just patterns
+- Look for similar patterns in the actual HTML and return those
+- ALWAYS use :has-text() for text-based selectors, never :contains()
+- DO NOT wrap selectors in backticks or any other formatting - return the raw selector only
+- For market categories, focus on containers that hold multiple betting options, not individual buttons or promotional elements
+- For "all markets" button, focus on expansion/control buttons, not individual betting options
+
+
+Return ONLY the most specific, valid CSS selector that will reliably find the target elements. If no good selector can be determined, return 'NONE'."""
                 
                 human_message = BaseMessage.make_user_message(
                     role_name="Human",
                     content=prompt
                 )
                 
-                response = self.llm_agent.step(human_message)
+                response = selector_agent.step(human_message)
                 selector = response.msgs[0].content.strip()
                 
                 # Clean up the response - remove any action command prefixes
@@ -1959,12 +2442,42 @@ If no good selector can be determined, return 'NONE'."""
                 if ':contains(' in selector:
                     selector = selector.replace(':contains(', ':has-text(')
                 
+                # Remove backticks if present (common LLM formatting issue)
+                if selector.startswith('`') and selector.endswith('`'):
+                    selector = selector[1:-1].strip()
+                    logger.info(f"Removed backticks from selector: {selector}")
+                
                 if selector.upper() == 'NONE':
                     return None
                 
-                # Validate that it looks like a CSS selector
+                # Enhanced validation that it looks like a CSS selector
                 if not any(char in selector for char in ['[', ':', '.', '#', '>', ' ']):
                     logger.warning(f"LLM returned something that doesn't look like a CSS selector: {selector}")
+                    return None
+                
+                # Additional validation for overly generic selectors
+                overly_generic = ['button', 'div', 'span', 'a', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+                if selector.strip() in overly_generic:
+                    logger.warning(f"LLM returned overly generic selector: {selector}")
+                    return None
+                
+                # Log the selected selector for debugging
+                logger.info(f"LLM suggested selector: {selector}")
+                
+                # Check if LLM returned one of the example selectors from the prompt
+                example_selectors = [
+                    'button[data-testid="all-markets"]',
+                    '#markets-popup button',
+                    'button[aria-label="Winner market"]',
+                    'div[class*="market-categories"] button',
+                    'button:has-text("SuperDuperBet")',
+                    'button[data-market-type="winner"]',
+                    'div[class*="betting-container"] button'
+                ]
+                
+                if selector in example_selectors:
+                    logger.warning(f"LLM returned example selector from prompt: {selector}")
+                    logger.warning("This selector was just an example and likely doesn't exist in the HTML")
                     return None
                 
                 return selector
@@ -1972,13 +2485,10 @@ If no good selector can be determined, return 'NONE'."""
             except Exception as e:
                 error_str = str(e).lower()
                 if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                    logger.warning(f"Rate limit error detected in _llm_find_selector (attempt {retry_count + 1}/{max_retries}): {e}")
+                    logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
                     
-                    # Record the rate limit error
-                    api_key_manager.record_rate_limit_error(self.model_type)
-                    
-                    # Reinitialize the agent with the new API key
-                    self._reinit_llm_agent_with_new_key()
+                    # Record the rate limit error for the flash model
+                    api_key_manager.record_rate_limit_error("gemini-2.5-flash")
                     
                     retry_count += 1
                     if retry_count < max_retries:
@@ -1994,17 +2504,145 @@ If no good selector can be determined, return 'NONE'."""
         
         return None
     
+    def _create_selector_agent(self) -> Optional[ChatAgent]:
+        """Create a dedicated agent for query selector functionality using flash model."""
+        try:
+            # Set the correct API key for the flash model
+            platform = api_key_manager._get_platform_from_model(Models.flash)
+            api_keys = api_key_manager._get_api_keys_for_platform(platform)
+            if api_keys:
+                idx = api_key_manager.current_key_indices.get(platform, 0)
+                os.environ[f"{platform.upper()}_API_KEY"] = api_keys[idx]
+            
+            # Create a model for the selector agent using flash
+            model = ModelFactory.create(
+                model_platform=ModelPlatformType.GEMINI,
+                model_type=Models.flash,
+            )
+            
+            # Create the selector agent with a focused system prompt
+            selector_agent = ChatAgent(
+                model=model,
+                system_message=SELECTOR_AGENT_SYSTEM_PROMPT
+            )
+            
+            logger.info("Selector agent created successfully with flash model")
+            return selector_agent
+            
+        except Exception as e:
+            logger.error(f"Failed to create selector agent: {str(e)}")
+            return None
+    
+    def _validate_selector(self, selector: str) -> bool:
+        """Validate that a selector is specific enough and likely to work."""
+        if not selector or not selector.strip():
+            return False
+        
+        selector = selector.strip()
+        
+        # Check for overly generic selectors
+        overly_generic = ['button', 'div', 'span', 'a', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+        if selector in overly_generic:
+            logger.warning(f"Selector too generic: {selector}")
+            return False
+        
+        # Check for basic CSS selector structure
+        if not any(char in selector for char in ['[', ':', '.', '#', '>', ' ']):
+            logger.warning(f"Selector doesn't look like valid CSS: {selector}")
+            return False
+        
+        # Check for common invalid patterns
+        invalid_patterns = [
+            ':contains(',  # Should be :has-text()
+            'CLICK_BUTTON:',  # Action command, not selector
+            'click:',  # Action command, not selector
+        ]
+        
+        for pattern in invalid_patterns:
+            if pattern in selector:
+                logger.warning(f"Selector contains invalid pattern '{pattern}': {selector}")
+                return False
+        
+        # Prefer selectors with specific attributes
+        specific_attributes = ['id=', 'data-', 'aria-', 'role=']
+        has_specific_attr = any(attr in selector for attr in specific_attributes)
+        
+        if not has_specific_attr and len(selector) < 10:
+            logger.warning(f"Selector may be too generic (no specific attributes): {selector}")
+            # Don't return False here, just warn
+        
+        return True
+    
     async def _find_element_with_selector(self, selector: str):
-        """Find an element using the given selector."""
+        """Find an element using the given selector, prioritizing containers over individual elements."""
         try:
             if not self.page:
                 return None
             
-            element = await self.page.query_selector(selector)
-            if element and await element.is_visible():
-                return element
+            # Validate the selector first
+            if not self._validate_selector(selector):
+                logger.error(f"Invalid selector rejected: {selector}")
+                return None
             
-            return None
+            # Try to find all matching elements
+            elements = await self.page.query_selector_all(selector)
+            if not elements:
+                logger.warning(f"No elements found with selector: {selector}")
+                return None
+            
+            logger.info(f"Found {len(elements)} elements with selector: {selector}")
+            
+            # If only one element, return it
+            if len(elements) == 1:
+                element = elements[0]
+                if await element.is_visible():
+                    logger.info(f"Found single element with selector: {selector}")
+                    return element
+                else:
+                    logger.warning(f"Single element found but not visible with selector: {selector}")
+                    return None
+            
+            # If multiple elements, find the largest/most comprehensive one
+            best_element = None
+            max_complexity = 0
+            
+            for i, element in enumerate(elements):
+                try:
+                    if not await element.is_visible():
+                        continue
+                    
+                    # Get the HTML content of this element
+                    element_html = await element.evaluate('el => el.outerHTML')
+                    
+                    # Calculate complexity based on HTML size and structure
+                    # Larger HTML usually means more content
+                    html_size = len(element_html)
+                    
+                    # Count interactive elements (buttons, links, inputs) as they indicate functionality
+                    interactive_elements = element_html.count('<button') + element_html.count('<a') + element_html.count('<input')
+                    
+                    # Count structural elements (div, span, etc.) as they indicate content organization
+                    structural_elements = element_html.count('<div') + element_html.count('<span') + element_html.count('<section')
+                    
+                    # Calculate a complexity score
+                    complexity_score = html_size + (interactive_elements * 10) + (structural_elements * 5)
+                    
+                    logger.debug(f"Element {i}: size={html_size}, interactive={interactive_elements}, structural={structural_elements}, score={complexity_score}")
+                    
+                    if complexity_score > max_complexity:
+                        max_complexity = complexity_score
+                        best_element = element
+                        
+                except Exception as e:
+                    logger.debug(f"Error evaluating element {i}: {e}")
+                    continue
+            
+            if best_element:
+                logger.info(f"Selected best element with complexity score {max_complexity} using selector: {selector}")
+                return best_element
+            else:
+                logger.warning(f"No suitable element found among {len(elements)} elements with selector: {selector}")
+                return None
             
         except Exception as e:
             logger.error(f"Error finding element with selector {selector}: {e}")
@@ -2034,6 +2672,119 @@ If no good selector can be determined, return 'NONE'."""
         except Exception as e:
             logger.error(f"Error parsing odds from change: {e}")
             return {}
+
+    async def _wait_for_popup_to_appear(self, max_wait_time: int = 10) -> bool:
+        """Wait for the markets popup to appear in the DOM after clicking the all markets button."""
+        try:
+            if not self.page:
+                logger.error("Page is not initialized")
+                return False
+                
+            logger.info("Waiting for markets popup to appear...")
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_time:
+                try:
+                    # Use LLM to find popup indicator selectors dynamically
+                    page_html = await self.page.content()
+                    
+                    user_goal = "find all elements that indicate a popup, modal, overlay, or drawer has appeared. These are elements that typically contain popup content, modal dialogs, or overlay panels."
+                    previous_actions = "Waiting for markets popup to appear"
+                    
+                    # Get LLM-suggested selectors for popup indicators
+                    popup_selector = self._llm_find_selector(page_html, user_goal, previous_actions)
+                    
+                    if not popup_selector:
+                        logger.warning("LLM could not suggest selectors for popup indicators, using minimal fallback")
+                        popup_indicators = ['[class*="popup"]', '[class*="modal"]', '[role="dialog"]']
+                    else:
+                        popup_indicators = [popup_selector]
+                    
+                    for indicator in popup_indicators:
+                        elements = await self.page.query_selector_all(indicator)
+                        for element in elements:
+                            if await element.is_visible():
+                                # Check if this element contains market-related content
+                                text = await element.text_content()
+                                if text and any(keyword in text.lower() for keyword in ['vincente', 'pareggio', 'sconfitta', 'totale', 'handicap', 'over', 'under', 'mercati', 'markets']):
+                                    logger.info(f"Found markets popup with indicator: {indicator}")
+                                    return True
+                    
+                    # Also check for significant HTML changes
+                    current_html = await self.page.content()
+                    if hasattr(self, '_previous_html'):
+                        if len(current_html) > len(self._previous_html) + 1000:  # Significant content added
+                            logger.info("Detected significant HTML content addition")
+                            return True
+                    
+                    self._previous_html = current_html
+                    
+                    # Brief pause before next check
+                    await asyncio.sleep(0.5)
+                    
+                except Exception as e:
+                    logger.debug(f"Error during popup detection check: {e}")
+                    await asyncio.sleep(0.5)
+                    continue
+            
+            logger.warning(f"Popup did not appear within {max_wait_time} seconds")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error waiting for popup: {e}")
+            return False
+
+    async def _wait_for_content_stabilization(self, max_wait_time: int = 5) -> None:
+        """Wait for the page content to stabilize after clicking the all markets button."""
+        try:
+            if not self.page:
+                logger.error("Page is not initialized")
+                return
+                
+            logger.info("Waiting for page content to stabilize...")
+            start_time = time.time()
+            last_html = None
+            stable_count = 0
+            
+            while time.time() - start_time < max_wait_time:
+                current_html = await self.page.content()
+                
+                if last_html is not None:
+                    if current_html == last_html:
+                        stable_count += 1
+                        if stable_count >= 3:  # Content is stable for 3 consecutive checks
+                            logger.info("Page content has stabilized")
+                            return
+                    else:
+                        stable_count = 0
+                
+                last_html = current_html
+                await asyncio.sleep(0.5)
+            
+            logger.info("Content stabilization timeout reached")
+            
+        except Exception as e:
+            logger.error(f"Error waiting for content stabilization: {e}")
+
+    async def _wait_for_network_idle(self, max_wait_time: int = 5) -> None:
+        """Wait for network requests to complete after clicking the all markets button."""
+        try:
+            if not self.page:
+                logger.error("Page is not initialized")
+                return
+                
+            logger.info("Waiting for network requests to complete...")
+            
+            # Wait for network to be idle (no requests for 500ms)
+            try:
+                await self.page.wait_for_load_state('networkidle', timeout=max_wait_time * 1000)
+                logger.info("Network is idle")
+            except Exception as e:
+                logger.debug(f"Network idle timeout or error: {e}")
+                # Continue anyway, as some sites may not reach networkidle state
+            
+        except Exception as e:
+            logger.error(f"Error waiting for network idle: {e}")
 
 
 def create_scraping_agent(headless: bool = True, model_type: str = "gemini-2.5-flash-lite-preview-06-17") -> 'WebScrapingAgent':

@@ -49,7 +49,21 @@ base_dir = pathlib.Path(__file__).parent
 env_path = base_dir / ".envrc"
 load_dotenv(dotenv_path=str(env_path))
 
-set_log_level(level="DEBUG")
+# Global logging level configuration
+GLOBAL_LOG_LEVEL = logging.INFO
+
+def set_global_log_level(level: int):
+    """Set the global logging level for the entire application."""
+    global GLOBAL_LOG_LEVEL
+    GLOBAL_LOG_LEVEL = level
+    # Update the root logger if it exists
+    root_logger = logging.getLogger()
+    root_logger.setLevel(GLOBAL_LOG_LEVEL)
+    # Update all handlers
+    for handler in root_logger.handlers:
+        handler.setLevel(GLOBAL_LOG_LEVEL)
+
+set_log_level(level=GLOBAL_LOG_LEVEL)
 
 class Models:
     gemini_flash = "gemini-2.5-flash"
@@ -73,7 +87,7 @@ def patched_extract_webpage_content(self, url: str) -> str:
         url, limit=1, scrape_options=ScrapeOptions(formats=["html"])
     )
     data = resp.data
-    logger.debug(f"Extractred data from {url}: {data}")
+    logger.debug(f"Extracted data from {url}: {len(data)} items")
     if len(data) == 0:
         if resp.success:
             return "No content found on the webpage."
@@ -391,7 +405,7 @@ Please provide a comprehensive list of all competitions found, organized by type
 
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON from agent response: {str(e)}")
-                logger.debug(f"Raw response: {agent_response}")
+                logger.debug(f"Raw response length: {len(agent_response)} chars")
 
                 # Return a fallback structure with the raw response
                 return {
@@ -415,7 +429,7 @@ Please provide a comprehensive list of all competitions found, organized by type
         except Exception as e:
             error_str = str(e).lower()
             if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
                 
                 # Record the rate limit error and rotate API key
                 api_key_manager.record_rate_limit_error(Models.flash_lite)
@@ -427,6 +441,7 @@ Please provide a comprehensive list of all competitions found, organized by type
                     continue
                 else:
                     logger.error(f"Max retries reached for rate limit errors")
+                    print(f"\033[91m✗ Rate limit exceeded after {max_retries} retries\033[0m")
                     return {
                         "competitions": [],
                         "summary": {
@@ -590,7 +605,7 @@ def extract_html_from_url(url: str) -> str:
             logger.info("HTML extraction successful")
             return content
         else:
-            logger.error(f"Failed to extract HTML: {content}")
+            logger.error(f"Failed to extract HTML: length={len(content)} preview={content[:200]!r}")
             return f"Error: {content}"
 
     except Exception as e:
@@ -900,7 +915,10 @@ def extract_teams_with_llm(html_content: str, site_name: str, competition: str) 
     
     while retry_count < max_retries:
         try:
-            logger.info(f"Starting team extraction for {site_name}")
+            # Log brief summary instead of full content
+            html_length = len(html_content)
+            logger.info(f"Starting team extraction for {site_name} (HTML length: {html_length} chars)")
+            
             agent = create_team_extraction_agent(competition)
             analysis_prompt = f"""
 Please analyze the following HTML content from {site_name} and extract all football teams and clubs participating in competition: {competition}.
@@ -938,7 +956,7 @@ Please provide a comprehensive list of all teams found, organized by type and ca
         except Exception as e:
             error_str = str(e).lower()
             if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
                 
                 # Record the rate limit error and rotate API key
                 api_key_manager.record_rate_limit_error(Models.flash_lite)
@@ -950,6 +968,7 @@ Please provide a comprehensive list of all teams found, organized by type and ca
                     continue
                 else:
                     logger.error(f"Max retries reached for rate limit errors")
+                    print(f"\033[91m✗ Rate limit exceeded after {max_retries} retries\033[0m")
                     return {
                         "teams": [],
                         "summary": {
@@ -1265,6 +1284,11 @@ def extract_team_data_with_llm(team: str, html_by_type: dict, meta: dict, save_d
     
     while retry_count < max_retries:
         try:
+            # Log brief summary instead of full content
+            total_html_length = sum(len(html) for html in html_by_type.values())
+            html_types = list(html_by_type.keys())
+            logger.info(f"Starting team data extraction for {team} (HTML types: {html_types}, total length: {total_html_length} chars)")
+            
             agent = create_team_data_extraction_agent(team)
             # Compose the prompt
             prompt = f"""
@@ -1317,7 +1341,7 @@ HTML content for each type:
         except Exception as e:
             error_str = str(e).lower()
             if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
                 
                 # Record the rate limit error and rotate API key
                 api_key_manager.record_rate_limit_error(Models.flash_lite)
@@ -1411,6 +1435,10 @@ def extract_competition_data_with_llm(html_content: str, site_name: str, competi
     
     while retry_count < max_retries:
         try:
+            # Log brief summary instead of full content
+            html_length = len(html_content)
+            logger.info(f"Starting competition data extraction for {competition} on {site_name} (HTML length: {html_length} chars)")
+            
             agent = ChatAgent(
                 model=ModelFactory.create(
                     model_platform=ModelPlatformType.GEMINI,
@@ -1427,7 +1455,7 @@ def extract_competition_data_with_llm(html_content: str, site_name: str, competi
         except Exception as e:
             error_str = str(e).lower()
             if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                logger.warning(f"Rate limit error detected (attempt {retry_count + 1}/{max_retries}): {e}")
+                logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
                 
                 # Record the rate limit error and rotate API key
                 api_key_manager.record_rate_limit_error(Models.flash_lite)
@@ -1439,6 +1467,7 @@ def extract_competition_data_with_llm(html_content: str, site_name: str, competi
                     continue
                 else:
                     logger.error(f"Max retries reached for rate limit errors")
+                    print(f"\033[91m✗ Rate limit exceeded after {max_retries} retries\033[0m")
                     return {"error": f"Rate limit exceeded after {max_retries} retries"}
             else:
                 # Non-rate-limit error, don't retry
@@ -1623,6 +1652,13 @@ For more details, see the README or function docstrings.
         help="Enable logging to file (logs/web_scraper.log) in addition to console output. Useful for debugging and batch runs."
     )
     parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set the logging level (default: INFO). Controls verbosity of log output."
+    )
+    parser.add_argument(
         "--group",
         type=str,
         default=None,
@@ -1704,19 +1740,37 @@ def _setup_logging(enable_file_logging):
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_file = logs_dir / "web_scraper.log"
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(GLOBAL_LOG_LEVEL)
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
     if enable_file_logging:
         file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        file_handler.setLevel(GLOBAL_LOG_LEVEL)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         root_logger.addHandler(file_handler)
         logger.info("File logging enabled")
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG)
-    console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    console_handler.setLevel(GLOBAL_LOG_LEVEL)
+    console_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     root_logger.addHandler(console_handler)
+    
+    # Silence camel-related log messages by default
+    # Only enable them if global logging level is DEBUG
+    camel_logger = logging.getLogger("camel")
+    if GLOBAL_LOG_LEVEL == logging.DEBUG:
+        camel_logger.setLevel(logging.DEBUG)
+    else:
+        camel_logger.setLevel(logging.WARNING)
+    
+    # Also silence specific camel submodules
+    camel_agents_logger = logging.getLogger("camel.agents")
+    camel_agents_chat_agent_logger = logging.getLogger("camel.agents.chat_agent")
+    if GLOBAL_LOG_LEVEL == logging.DEBUG:
+        camel_agents_logger.setLevel(logging.DEBUG)
+        camel_agents_chat_agent_logger.setLevel(logging.DEBUG)
+    else:
+        camel_agents_logger.setLevel(logging.WARNING)
+        camel_agents_chat_agent_logger.setLevel(logging.WARNING)
 
 
 def _handle_list_sites():
@@ -2203,14 +2257,25 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
         """
         
         for i, market in enumerate(collected_markets, 1):
+            # Ensure market is a dictionary
+            if isinstance(market, dict):
+                market_name = market.get('market_name', 'Unknown Market')
+                market_type = market.get('market_type', 'unknown')
+                market_structure = market.get('structure', 'unknown')
+            else:
+                # Fallback if market is not a dictionary
+                market_name = str(market) if market else 'Unknown Market'
+                market_type = 'unknown'
+                market_structure = 'unknown'
+            
             html_content += f"""
             <div class="market" data-market-id="{i}">
-                <h3>Market {i}: {market.get('market_name', 'Unknown Market')}</h3>
-                <p><strong>Type:</strong> {market.get('market_type', 'unknown')}</p>
-                <p><strong>Structure:</strong> {market.get('structure', 'unknown')}</p>
+                <h3>Market {i}: {market_name}</h3>
+                <p><strong>Type:</strong> {market_type}</p>
+                <p><strong>Structure:</strong> {market_structure}</p>
             """
             
-            if market.get('structure') == 'table':
+            if isinstance(market, dict) and market.get('structure') == 'table':
                 headers = market.get('headers', [])
                 rows = market.get('rows', [])
                 if headers:
@@ -2227,7 +2292,7 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
                     
                     html_content += "</tbody></table>"
             
-            elif market.get('structure') == 'list':
+            elif isinstance(market, dict) and market.get('structure') == 'list':
                 odds_list = market.get('odds', [])
                 if odds_list:
                     html_content += "<table border='1'><thead><tr><th>Condition</th><th>Odds</th><th>Bookmaker</th></tr></thead><tbody>"
@@ -2235,7 +2300,7 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
                         html_content += f"<tr><td>{odds_item.get('condition', 'Unknown')}</td><td>{odds_item.get('odds', 'Unknown')}</td><td>{odds_item.get('bookmaker', 'Unknown')}</td></tr>"
                     html_content += "</tbody></table>"
             
-            elif market.get('structure') == 'text':
+            elif isinstance(market, dict) and market.get('structure') == 'text':
                 content = market.get('content', '')
                 html_content += f"<p><strong>Content:</strong> {content}</p>"
             
@@ -2263,6 +2328,17 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
 
 def main():
     args = _parse_args()
+    
+    # Set global logging level based on command line argument
+    log_level_map = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL
+    }
+    set_global_log_level(log_level_map[args.log_level])
+    
     if getattr(args, "list_sites", False):
         _handle_list_sites()
         return
