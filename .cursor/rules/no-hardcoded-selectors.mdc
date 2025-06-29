@@ -1,0 +1,11 @@
+---
+description: 
+globs: agent.py
+alwaysApply: false
+---
+MUST NOT hard code selectors (never).
+MUST always use the LLM to find selectors.
+anything that uses hard-coded parameters for filtering SHOULD be refactored to use the LLM.
+Don't use any form of fallback mechanism when the LLM is not available or doesn't return the required data.
+Don't over-complicate logic, if the LLM fails try with a more generic prompt, if the generic prompt fails raise an error.
+Don't use heuristics, let the LLMs handle all the work.

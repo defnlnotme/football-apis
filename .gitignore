@@ -181,6 +181,7 @@ data/*
 
 # Ignore cached HTML files
 cache/**/*.html
+cache/**/*.json
 
 uv.lock
 

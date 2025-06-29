@@ -2741,59 +2741,40 @@ Return ONLY the most specific, valid CSS selector that will reliably find the ta
             return {}
 
     async def _wait_for_popup_to_appear(self, max_wait_time: int = 10) -> bool:
-        """Wait for the markets popup to appear in the DOM after clicking the all markets button."""
+        """Wait for the markets popup to appear in the DOM after clicking the all markets button, using only LLM-driven selectors."""
         try:
             if not self.page:
                 logger.error("Page is not initialized")
                 return False
-                
-            logger.info("Waiting for markets popup to appear...")
+
+            logger.info("Waiting for markets popup to appear (LLM-driven only)...")
             start_time = time.time()
-            
-            # Capture the initial HTML state before waiting for popup
             initial_html = await self.page.content()
-            logger.info(f"Captured initial HTML state ({len(initial_html)} characters)")
-            
+
             while time.time() - start_time < max_wait_time:
                 try:
-                    # Get current page HTML
                     current_html = await self.page.content()
-                    
-                    # Check if there's been a significant change in HTML content
-                    if len(current_html) > len(initial_html) + 500:  # Significant content added
-                        logger.info(f"Detected significant HTML content addition: {len(initial_html)} -> {len(current_html)} characters")
-                        
-                        # Find the specific elements that were added or modified
-                        updated_elements = await self._find_updated_elements(initial_html, current_html)
-                        
-                        if updated_elements:
-                            logger.info(f"Found {len(updated_elements)} updated elements")
-                            
-                            # Check if any of the updated elements contain market content
-                            for element_info in updated_elements:
-                                if element_info.get('contains_markets', False):
-                                    logger.info(f"Found market content in updated element: {element_info.get('element_type', 'unknown')}")
-                                    return True
-                        
-                        # If LLM selector doesn't work, do a more detailed diff analysis
-                        logger.info("LLM selector didn't confirm popup, doing detailed diff analysis...")
-                        if await self._analyze_html_diff_for_popup(initial_html, current_html):
-                            logger.info("Detailed diff analysis confirmed popup appearance")
-                            return True
-                    
-                    # Brief pause before next check
-                    await asyncio.sleep(0.5)
-                    
+                    # Use LLM to suggest a selector for the popup/modal
+                    user_goal = "find the popup or container that contains market categories (like 'Vincente', 'Totale gol', 'Handicap Asiatico') that appeared after clicking 'all markets'"
+                    previous_actions = "Clicked 'all markets' button to expand markets"
+                    popup_selector = self._llm_find_selector(current_html, user_goal, previous_actions)
+                    if not popup_selector:
+                        logger.info("LLM could not suggest a selector for markets popup, retrying...")
+                        await asyncio.sleep(1)
+                        continue
+                    element = await self.page.query_selector(popup_selector)
+                    if element and await element.is_visible():
+                        logger.info(f"Found markets popup using LLM selector: {popup_selector}")
+                        return True
+                    await asyncio.sleep(1)
                 except Exception as e:
-                    logger.debug(f"Error during popup detection check: {e}")
-                    await asyncio.sleep(0.5)
+                    logger.debug(f"Error during LLM-driven popup detection: {e}")
+                    await asyncio.sleep(1)
                     continue
-            
-            logger.warning(f"Popup did not appear within {max_wait_time} seconds")
+            logger.error("LLM could not find a visible markets popup within the wait time. No fallback or heuristics allowed.")
             return False
-            
         except Exception as e:
-            logger.error(f"Error waiting for popup: {e}")
+            logger.error(f"Error waiting for popup (LLM-only): {e}")
             return False
 
     async def _analyze_html_diff_for_popup(self, before_html: str, after_html: str) -> bool:
