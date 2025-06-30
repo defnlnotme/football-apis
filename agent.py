@@ -1087,3 +1087,13 @@ CSS Selector:"""
 def create_scraping_agent(headless: bool = True, model_type: str = Models.flash_lite) -> 'WebScrapingAgent':
     """Create a WebScrapingAgent instance with the specified configuration."""
     return WebScrapingAgent(headless=headless, model_type=model_type)
+
+async def fetch_url_html(url: str) -> str:
+    """Fetch the HTML content of the given URL using Playwright (headless Chromium)."""
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto(url, wait_until="networkidle")
+        html = await page.content()
+        await browser.close()
+        return html

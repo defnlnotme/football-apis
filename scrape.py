@@ -16,15 +16,20 @@ import pathlib
 import argparse
 import json
 import re
+import os
+import aiohttp
 from dotenv import load_dotenv
+
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
 from camel.logger import set_log_level
 from camel.agents import ChatAgent
 from camel.messages import BaseMessage
+
 from owl.utils import DocumentProcessingToolkit
 from owl.utils.document_toolkit import DocumentProcessingToolkit, ScrapeOptions
 from camel.utils import retry_on_error
+
 import time
 import logging
 import traceback
@@ -33,19 +38,20 @@ import shutil
 from site_urls import SITE_URLS
 from urllib.parse import urljoin
 import datetime
-import os
 import pprint
 # Import specific items from prompts to avoid conflicts with local Models class
 from prompts import (
     COMPETITION_EXTRACTION_PROMPT,
     TEAM_EXTRACTION_PROMPT,
     TEAM_DATA_EXTRACTION_PROMPT,
-    COMPETITION_DATA_EXTRACTION_PROMPT
+    COMPETITION_DATA_EXTRACTION_PROMPT,
+    Models
 )
+
 import mimetypes
 import requests
 from urllib.parse import urlparse
-from agent import create_scraping_agent, WebScrapingAgent
+from agent import create_scraping_agent, WebScrapingAgent, fetch_url_html
 import asyncio
 
 # Import APIKeyManager from agent.py
@@ -70,13 +76,6 @@ def set_global_log_level(level: int):
         handler.setLevel(GLOBAL_LOG_LEVEL)
 
 set_log_level(level=GLOBAL_LOG_LEVEL)
-
-class Models:
-    gemini_flash = "gemini-2.5-flash"
-    gemini_flash_lite = "gemini-2.5-flash-lite-preview-06-17"
-
-    flash = gemini_flash
-    flash_lite = gemini_flash_lite
 
 # Use the root logger for this script
 logger = logging.getLogger()
@@ -285,7 +284,7 @@ def clear_cache(site_name: Optional[str] = None) -> int:
             print(f"\033[93mNo cache directory found to clear\033[0m")
     return cleared_count
 
-def create_competition_extraction_agent(group: str, model_type=Models.flash_lite) -> ChatAgent:
+def create_competition_extraction_agent(group: str, model_type) -> ChatAgent:
     """Create a CAMEL agent for extracting competition data from HTML content, with group interpolation.
 
     Args:
@@ -323,20 +322,20 @@ def create_competition_extraction_agent(group: str, model_type=Models.flash_lite
         logger.error(f"Failed to create competition extraction agent: {str(e)}")
         raise e
 
-def extract_competitions_with_llm(html_content: str, site_name: str, group: Optional[str] = None) -> Dict[str, Any]:
-    """Extract competition list from HTML content using a CAMEL agent.
-
-    Args:
-        html_content (str): The HTML content to analyze
-        site_name (str): The name of the site being analyzed
-        group (Optional[str]): Group to filter competitions by
-
-    Returns:
-        Dict[str, Any]: Extracted competition data in structured format
+def validate_html_content(html: str, context: str = ""):
     """
+    Validate that the provided HTML content is a non-empty string and contains at least one of the tags: <html, <div, or <table> (case-insensitive).
+    Raises a ValueError with a context-specific message if validation fails.
+    """
+    if not isinstance(html, str) or not html.strip() or not any(tag in html.lower() for tag in ["<html", "<div", "<table"]):
+        raise ValueError(f"Provided HTML content for {context} is not valid HTML or is empty.")
+
+def extract_competitions_with_llm(html_content: str, site_name: str, group: str = "latest", model_type=None) -> Dict[str, Any]:
+    validate_html_content(html_content, f"site '{site_name}'")
     max_retries = 3
     retry_count = 0
-    
+    if model_type is None:
+        model_type = get_default_model_for_extract_type("competitions")
     while retry_count < max_retries:
         try:
             # Log brief summary instead of full content
@@ -344,7 +343,7 @@ def extract_competitions_with_llm(html_content: str, site_name: str, group: Opti
             logger.info(f"Starting competition extraction for {site_name} (HTML length: {html_length} chars)")
 
             # Create the competition extraction agent with group interpolation
-            agent = create_competition_extraction_agent(group or "(not specified)")
+            agent = create_competition_extraction_agent(group or "(not specified)", model_type)
 
             # Prepare the analysis prompt
             analysis_prompt = f"""
@@ -411,6 +410,18 @@ Please provide a comprehensive list of all competitions found, organized by type
 
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON from agent response: {str(e)}")
+
+                # Dump the raw json_str to a file for debugging
+                debug_dir = os.path.join(base_dir, "logs")
+                os.makedirs(debug_dir, exist_ok=True)
+                debug_file = os.path.join(debug_dir, "competition_agent_raw_json.txt")
+                try:
+                    with open(debug_file, "w", encoding="utf-8") as f:
+                        f.write(agent_response)
+                    logger.info(f"Dumped raw JSON string to {debug_file}")
+                except Exception as dump_exc:
+                    logger.error(f"Failed to dump raw JSON string: {dump_exc}")
+
                 logger.debug(f"Raw response length: {len(agent_response)} chars")
 
                 # Return a fallback structure with the raw response
@@ -579,45 +590,45 @@ def get_site_info(site_name: str) -> Tuple[bool, str, str, dict]:
     return False, "", "", {"default": 1}
 
 
-def extract_html_from_url(url: str) -> str:
-    r"""Extract HTML content from a URL using DocumentProcessingToolkit.
-
-    Args:
-        url (str): The URL to extract HTML from.
-
-    Returns:
-        str: The extracted HTML content.
-    """
-    try:
-        # Create a model for the toolkit (using a simple model)
-        model = ModelFactory.create(
-            model_platform=ModelPlatformType.GEMINI,
-            model_type=Models.flash,
-            model_config_dict={"temperature": 0},
-        )
-
-        # Initialize the DocumentProcessingToolkit
-        doc_toolkit = DocumentProcessingToolkit(model=model)
-        # Patch the method after instantiation
-        doc_toolkit._extract_webpage_content = patched_extract_webpage_content.__get__(doc_toolkit, DocumentProcessingToolkit)
-        doc_toolkit._is_webpage = patched_is_webpage.__get__(doc_toolkit, DocumentProcessingToolkit)
-
-        logger.info(f"Extracting HTML from URL: {url}")
-
-        # Extract the document content
-        success, content = doc_toolkit.extract_document_content(url)
-
-        if success:
-            logger.info("HTML extraction successful")
-            return content
-        else:
-            logger.error(f"Failed to extract HTML: length={len(content)} preview={content[:200]!r}")
-            return f"Error: {content}"
-
-    except Exception as e:
-        logger.error(f"Exception during HTML extraction: {str(e)}")
-        logger.debug(traceback.format_exc())
-        return f"Exception: {str(e)}"
+def extract_html_from_url(url: str, extractor: str = "firecrawl") -> str:
+    r"""Extract HTML content from a URL using the selected backend."""
+    if extractor == "firecrawl":
+        try:
+            # Create a model for the toolkit (using a simple model)
+            model = ModelFactory.create(
+                model_platform=ModelPlatformType.GEMINI,
+                model_type=Models.flash,
+                model_config_dict={"temperature": 0},
+            )
+            doc_toolkit = DocumentProcessingToolkit(model=model)
+            doc_toolkit._extract_webpage_content = patched_extract_webpage_content.__get__(doc_toolkit, DocumentProcessingToolkit)
+            doc_toolkit._is_webpage = patched_is_webpage.__get__(doc_toolkit, DocumentProcessingToolkit)
+            logger.info(f"Extracting HTML from URL: {url} (firecrawl)")
+            success, content = doc_toolkit.extract_document_content(url)
+            if success:
+                logger.info("HTML extraction successful")
+                return content
+            else:
+                logger.error(f"Failed to extract HTML: length={len(content)} preview={content[:200]!r}")
+                return f"Error: {content}"
+        except Exception as e:
+            logger.error(f"Exception during HTML extraction: {str(e)}")
+            logger.debug(traceback.format_exc())
+            return f"Exception: {str(e)}"
+    elif extractor == "playwright":
+        try:
+            logger.info(f"Extracting HTML from URL: {url} (playwright)")
+            # Use Playwright to fetch the page HTML (synchronously)
+            import asyncio
+            html = asyncio.run(fetch_url_html(url))
+            logger.info("HTML extraction (playwright) successful")
+            return html
+        except Exception as e:
+            logger.error(f"Exception during Playwright HTML extraction: {str(e)}")
+            logger.debug(traceback.format_exc())
+            return f"Exception: {str(e)}"
+    else:
+        raise ValueError(f"Unknown HTML extractor: {extractor}")
 
 def save_html_to_file(html_content: str, site_name: str, path: Optional[str] = None) -> str:
     r"""Save HTML content to a file in the cache/<site>/ folder.
@@ -737,7 +748,7 @@ def find_cached_files_by_regex(site_name: str, pattern: str) -> list:
     regex = re.compile(pattern)
     return [f for f in cache_dir.iterdir() if f.is_file() and regex.search(f.name)]
 
-def extract_all_competitions(site_name: str, site_info: dict, group: Optional[str] = None, path: Optional[str] = None, force_fetch: bool = False) -> dict:
+def extract_all_competitions(site_name: str, site_info: dict, group: Optional[str] = None, path: Optional[str] = None, force_fetch: bool = False, model_type=None, html_extractor: str = "playwright") -> dict:
     import os
     cache_file = get_competitions_cache_file_path(site_name, group, path)
     if cache_file.exists() and not force_fetch:
@@ -749,7 +760,6 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
     base_url = site_info["url"]
     paths_info = site_info.get("paths", {})
     competitions_entry = paths_info.get("competitions", base_url)
-    # Handle both list and string types
     if isinstance(competitions_entry, list):
         comp_urls = competitions_entry
     elif isinstance(competitions_entry, str):
@@ -782,7 +792,6 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
     seen = set()
     errors = []
     for comp_url in comp_urls:
-        # Format comp_url if it contains placeholders
         if '{' in comp_url and '}' in comp_url:
             try:
                 comp_url = fill_url_pattern(comp_url, argparse.Namespace(**{
@@ -792,33 +801,33 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
             except ValueError as e:
                 print(f"\033[91mError: {e}\033[0m")
                 return {"competitions": [], "summary": summary, "error": str(e)}
-        # Resolve relative URLs
         if not comp_url.startswith("http://") and not comp_url.startswith("https://"):
             url = urljoin(base_url, comp_url)
         else:
             url = comp_url
-        # Try to find a cached HTML file for this path
         slug = comp_url.replace('/', '_').strip('_')
         pattern = rf"{re.escape(slug)}.*\.html$"
         cached_files = find_cached_files_by_regex(site_name, pattern)
+        html_content = None
         if cached_files:
-            # Use the most recent cached file (by modification time)
             cached_file = max(cached_files, key=lambda f: f.stat().st_mtime)
             with open(cached_file, 'r', encoding='utf-8') as f:
                 html_content = f.read()
-            logger.info(f"Loaded HTML from cache: {cached_file}")
-        else:
-            html_content = extract_html_from_url(url)
-            # Save HTML for each path
+            try:
+                validate_html_content(html_content, f"site '{site_name}', comp_url '{comp_url}'")
+                logger.info(f"Loaded HTML from cache: {cached_file}")
+            except ValueError:
+                logger.warning(f"Cached HTML for {site_name} ({comp_url}) is invalid, refetching...")
+                html_content = None
+        if html_content is None:
+            html_content = extract_html_from_url(url, extractor=html_extractor)
             save_html_to_file(html_content, site_name, path=comp_url)
         if html_content.startswith("Error:") or html_content.startswith("Exception:"):
             errors.append(f"{url}: {html_content}")
             continue
-        comp_data = extract_competitions_with_llm(html_content, site_name, group=group)
-        # Add html_url to each competition
+        comp_data = extract_competitions_with_llm(html_content, site_name, group=group or "latest", model_type=model_type)
         for c in comp_data.get("competitions", []):
             c["html_url"] = url
-        # Save each path's competitions file
         save_competitions_to_file(comp_data, site_name, path=comp_url)
         comps = comp_data.get("competitions", [])
         for c in comps:
@@ -826,7 +835,6 @@ def extract_all_competitions(site_name: str, site_info: dict, group: Optional[st
             if key not in seen:
                 all_competitions.append(c)
                 seen.add(key)
-        # Merge category counts
         cats = comp_data.get("summary", {}).get("categories", {})
         for k, v in cats.items():
             summary["categories"][k] += v
@@ -885,7 +893,7 @@ def extract_json_from_response(agent_response: str) -> dict:
     except json.JSONDecodeError as e:
         raise ValueError(f"Found a potential JSON string but it could not be parsed: {e}")
 
-def create_team_extraction_agent(competition: str) -> ChatAgent:
+def create_team_extraction_agent(competition: str, model_type) -> ChatAgent:
     """Create a CAMEL agent for extracting team data from HTML content, with competition interpolation.
     Args:
         competition (str): The competition ID to extract teams for.
@@ -893,14 +901,14 @@ def create_team_extraction_agent(competition: str) -> ChatAgent:
         ChatAgent: The configured team extraction agent
     """
     try:
-        platform = api_key_manager._get_platform_from_model(Models.flash)
+        platform = api_key_manager._get_platform_from_model(model_type)
         api_keys = api_key_manager._get_api_keys_for_platform(platform)
         if api_keys:
             idx = api_key_manager.current_key_indices.get(platform, 0)
             os.environ[f"{platform.upper()}_API_KEY"] = api_keys[idx]
         model = ModelFactory.create(
-            model_platform=ModelPlatformType.GEMINI,
-            model_type=Models.flash,
+            model_platform=platform,
+            model_type=model_type,
             model_config_dict={"temperature": 1/3},
         )
         system_prompt = TEAM_EXTRACTION_PROMPT.format(competition=competition)
@@ -914,18 +922,19 @@ def create_team_extraction_agent(competition: str) -> ChatAgent:
         logger.error(f"Failed to create team extraction agent: {str(e)}")
         raise e
 
-def extract_teams_with_llm(html_content: str, site_name: str, competition: str) -> Dict[str, Any]:
-    """Extract teams from HTML content using LLM."""
+def extract_teams_with_llm(html_content: str, site_name: str, competition: str, model_type=None) -> Dict[str, Any]:
+    validate_html_content(html_content, f"site '{site_name}', competition '{competition}'")
     max_retries = 3
     retry_count = 0
-    
+    if model_type is None:
+        model_type = get_default_model_for_extract_type("competition-teams")
     while retry_count < max_retries:
         try:
             # Log brief summary instead of full content
             html_length = len(html_content)
             logger.info(f"Starting team extraction for {site_name} (HTML length: {html_length} chars)")
             
-            agent = create_team_extraction_agent(competition)
+            agent = create_team_extraction_agent(competition, model_type)
             analysis_prompt = f"""
 Please analyze the following HTML content from {site_name} and extract all football teams and clubs participating in competition: {competition}.
 
@@ -1172,7 +1181,7 @@ def is_team_html_cache_valid(cache_path: pathlib.Path) -> bool:
     return file_age < TEAM_HTML_CACHE_TTL_SECONDS
 
 # --- Caching for extract_team_historical ---
-def extract_team_historical(site_name: str, team: str, year: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_historical(site_name: str, team: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("historical")
     if not pattern:
@@ -1189,14 +1198,19 @@ def extract_team_historical(site_name: str, team: str, year: str, force_fetch: b
     cache_path = get_team_html_cache_path(site_name, team, "historical", year=year)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'historical'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached historical HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 # --- Caching for extract_team_news ---
-def extract_team_news(site_name: str, team: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_news(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("news")
     if not pattern:
@@ -1206,14 +1220,19 @@ def extract_team_news(site_name: str, team: str, force_fetch: bool = False, args
     cache_path = get_team_html_cache_path(site_name, team, "news")
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'news'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached news HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 # --- Caching for extract_team_appearances ---
-def extract_team_appearances(site_name: str, team: str, competition: str, year: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_appearances(site_name: str, team: str, competition: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("appearances")
     if not pattern:
@@ -1230,14 +1249,19 @@ def extract_team_appearances(site_name: str, team: str, competition: str, year: 
     cache_path = get_team_html_cache_path(site_name, team, "appearances", year=year, competition=competition)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', competition '{competition}', type 'appearances'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached appearances HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 # --- Caching for extract_team_squad ---
-def extract_team_squad(site_name: str, team: str, year: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_squad(site_name: str, team: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("squad")
     if not pattern:
@@ -1247,14 +1271,19 @@ def extract_team_squad(site_name: str, team: str, year: str, force_fetch: bool =
     cache_path = get_team_html_cache_path(site_name, team, "squad", year=year)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'squad'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached squad HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 
-def create_team_data_extraction_agent(team: str, model_type: str = Models.flash_lite) -> ChatAgent:
+def create_team_data_extraction_agent(team: str, model_type: str) -> ChatAgent:
     """Create a CAMEL agent for extracting structured team data from HTML content, formatting the prompt with the team.
 
     Args:
@@ -1281,22 +1310,19 @@ def create_team_data_extraction_agent(team: str, model_type: str = Models.flash_
     logger.info("Team data extraction agent created successfully")
     return agent
 
-def extract_team_data_with_llm(team: str, html_by_type: dict, meta: dict, save_dir: str = "", save_prefix: str = "") -> dict:
-    """Extract structured team data from HTML content for each requested type using the specialized agent.
-    If JSON extraction fails, save the raw response to a .txt file if save_dir and save_prefix are provided.
-    """
+def extract_team_data_with_llm(team: str, html_by_type: dict, meta: dict, save_dir: str = "", save_prefix: str = "", model_type=None) -> dict:
+    for t, html in html_by_type.items():
+        validate_html_content(html, f"team '{team}', type '{t}'")
     max_retries = 3
     retry_count = 0
-    
+    if model_type is None:
+        model_type = get_default_model_for_extract_type(list(html_by_type.keys())[0] if html_by_type else "team-stats")
     while retry_count < max_retries:
         try:
-            # Log brief summary instead of full content
             total_html_length = sum(len(html) for html in html_by_type.values())
             html_types = list(html_by_type.keys())
             logger.info(f"Starting team data extraction for {team} (HTML types: {html_types}, total length: {total_html_length} chars)")
-            
-            agent = create_team_data_extraction_agent(team)
-            # Compose the prompt
+            agent = create_team_data_extraction_agent(team, model_type)
             prompt = f"""
 Extract the following data for team: {team}
 
@@ -1368,8 +1394,7 @@ HTML content for each type:
     # This should never be reached, but return empty dict to satisfy type checker
     return {}
 
-def extract_team_h2h(site_name: str, team: str, force_fetch: bool = False, args=None) -> str:
-    """Extract the h2h summary page for a team, if the site provides a static link."""
+def extract_team_h2h(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("h2h")
     if not pattern:
@@ -1379,14 +1404,19 @@ def extract_team_h2h(site_name: str, team: str, force_fetch: bool = False, args=
     cache_path = get_team_html_cache_path(site_name, team, "h2h")
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'h2h'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached h2h HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 # --- Caching for extract_team_h2h_vs ---
-def extract_team_h2h_vs(site_name: str, team: str, vs_team: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_h2h_vs(site_name: str, team: str, vs_team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("h2h-vs")
     if not pattern:
@@ -1396,8 +1426,13 @@ def extract_team_h2h_vs(site_name: str, team: str, vs_team: str, force_fetch: bo
     cache_path = get_team_html_cache_path(site_name, team, "h2h-vs", vs_team=vs_team)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', vs_team '{vs_team}', type 'h2h-vs'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached h2h-vs HTML for {team} vs {vs_team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
@@ -1435,10 +1470,12 @@ def compute_h2h_aggregate(matches):
                 pass
     return agg
 
-def extract_competition_data_with_llm(html_content: str, site_name: str, competition: str) -> dict:
+def extract_competition_data_with_llm(html_content: str, site_name: str, competition: str, model_type=None) -> dict:
+    validate_html_content(html_content, f"site '{site_name}', competition '{competition}'")
     max_retries = 3
     retry_count = 0
-    
+    if model_type is None:
+        model_type = get_default_model_for_extract_type("competition-stats")
     while retry_count < max_retries:
         try:
             # Log brief summary instead of full content
@@ -1448,7 +1485,7 @@ def extract_competition_data_with_llm(html_content: str, site_name: str, competi
             agent = ChatAgent(
                 model=ModelFactory.create(
                     model_platform=ModelPlatformType.GEMINI,
-                    model_type=Models.flash_lite
+                    model_type=model_type
                 ),
                 system_message=COMPETITION_DATA_EXTRACTION_PROMPT.format(competition=competition)
             )
@@ -1483,7 +1520,7 @@ def extract_competition_data_with_llm(html_content: str, site_name: str, competi
     # This should never be reached, but return error to satisfy type checker
     return {"error": "Unexpected error in competition data extraction"}
 
-def extract_team_stats(site_name: str, team: str, group: str = "", competition: str = "", force_fetch: bool = False, args=None) -> str:
+def extract_team_stats(site_name: str, team: str, group: str = "", competition: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     site_name = site_name or ""
     team = team or ""
     group = group or ""
@@ -1496,16 +1533,21 @@ def extract_team_stats(site_name: str, team: str, group: str = "", competition: 
     cache_path = get_team_html_cache_path(site_name, team, "team-stats", competition=competition)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', type 'team-stats'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached team-stats HTML for {team} is invalid, refetching...")
     sub_path = fill_url_pattern(pattern, args)
     url = urljoin(base_url, sub_path)
-    html_content = extract_html_from_url(url)
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 # --- Caching for extract_team_outrights ---
-def extract_team_outrights(site_name: str, team: str, group: str, competition: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_outrights(site_name: str, team: str, group: str, competition: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("outrights")
     if not pattern:
@@ -1520,14 +1562,19 @@ def extract_team_outrights(site_name: str, team: str, group: str, competition: s
     cache_path = get_team_html_cache_path(site_name, team, "outrights", competition=competition)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', type 'outrights'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached outrights HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
 # --- Caching for extract_team_odds_upcoming ---
-def extract_team_odds_upcoming(site_name: str, team: str, group: str, competition: str, force_fetch: bool = False, args=None) -> str:
+def extract_team_odds_upcoming(site_name: str, team: str, group: str, competition: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("odds")
     if not pattern:
@@ -1542,13 +1589,18 @@ def extract_team_odds_upcoming(site_name: str, team: str, group: str, competitio
     cache_path = get_team_html_cache_path(site_name, team, "odds", competition=competition)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', type 'odds'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached odds HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
 
-def extract_team_odds_historical(site_name: str, team: str, group: str, competition: str, year: str, page: str = "1", force_fetch: bool = False, args=None) -> str:
+def extract_team_odds_historical(site_name: str, team: str, group: str, competition: str, year: str, page: str = "1", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("odds-historical")
     if not pattern:
@@ -1567,8 +1619,13 @@ def extract_team_odds_historical(site_name: str, team: str, group: str, competit
     cache_path = get_team_html_cache_path(site_name, team, "odds-historical", year=year, competition=competition)
     if not force_fetch and is_team_html_cache_valid(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    html_content = extract_html_from_url(url)
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', year '{year}', type 'odds-historical'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached odds-historical HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
     with open(cache_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
     return html_content
@@ -1738,8 +1795,62 @@ For more details, see the README or function docstrings.
         default=None,
         help="Comma-separated list of extraction types: competition-teams, competition-stats, historical, news, appearances, squad, h2h, h2h-vs, team-stats, etc. Chooses the system prompt and extraction logic based on the value(s)."
     )
+    # Add --model argument
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        choices=list(MODEL_SHORTHANDS.keys()) + list(MODEL_SHORTHANDS.values()),
+        help="Model type to use for LLM extraction. Shorthands: " + ", ".join(MODEL_SHORTHAND_HELP) + ". You can use either the shorthand or the full model name."
+    )
+    parser.add_argument(
+        "--html-extractor",
+        type=str,
+        choices=["firecrawl", "playwright"],
+        default="playwright",
+        help="Choose which backend to use for extracting HTML from URLs: 'firecrawl' or 'playwright' (default)."
+    )
     return parser.parse_args()
 
+# --- Model shorthand mapping (dynamic from Models class) ---
+MODEL_SHORTHANDS = {k: getattr(Models, k) for k in dir(Models) if not k.startswith('__') and not k.startswith('_') and isinstance(getattr(Models, k), str)}
+MODEL_SHORTHAND_HELP = [f"{k} -> {v}" for k, v in MODEL_SHORTHANDS.items()]
+
+def parse_model_shorthand(shorthand: str) -> str:
+    """
+    Convert a model shorthand (e.g., 'flash') to the full model string.
+    Raises ValueError if not found.
+    """
+    if shorthand in MODEL_SHORTHANDS:
+        return MODEL_SHORTHANDS[shorthand]
+    # Also allow passing the full model string directly
+    if shorthand in MODEL_SHORTHANDS.values():
+        return shorthand
+    raise ValueError(f"Unknown model shorthand or model name: {shorthand}. Valid options: {', '.join(MODEL_SHORTHANDS.keys())}")
+
+# --- Model selection utility ---
+def get_default_model_for_extract_type(extract_type: str) -> str:
+    """
+    Return the default model for a given extract type.
+    """
+    mapping = {
+        "competitions": Models.flash_lite,
+        "competition-teams": Models.flash,
+        "competition-stats": Models.flash_lite,
+        "historical": Models.flash_lite,
+        "news": Models.flash_lite,
+        "appearances": Models.flash_lite,
+        "squad": Models.flash_lite,
+        "h2h": Models.flash_lite,
+        "h2h-vs": Models.flash_lite,
+        "team-stats": Models.flash_lite,
+        "stats": Models.flash_lite,
+        "odds-historical": Models.flash_lite,
+        "odds": Models.flash_lite,
+        "outrights": Models.flash_lite,
+        "odds-match": Models.flash_lite,
+    }
+    return mapping.get(extract_type, Models.flash_lite)
 
 def _setup_logging(enable_file_logging):
     logs_dir = base_dir / "logs"
@@ -1918,6 +2029,7 @@ def handle_extract_competitions(args, data_dir, filename):
     group = args.group
     path = args.path
     force_fetch = args.force_fetch
+    model_type = parse_model_shorthand(args.model) if args.model else get_default_model_for_extract_type("competitions")
     competition_data = extract_all_competitions(args.site, site_info, group=group, path=path, force_fetch=force_fetch)
     if "error" in competition_data:
         print(f"\033[93m⚠ Competition extraction failed: {competition_data['error']}\033[0m")
@@ -1941,6 +2053,8 @@ def handle_extract_competitions(args, data_dir, filename):
 
 
 def _handle_extract(args):
+    if not hasattr(args, 'html_extractor') or args.html_extractor is None:
+        args.html_extractor = 'playwright'
     extract_types = [x.strip().lower() for x in args.extract.split(",") if x.strip()] if args.extract else []
     current_year = str(datetime.datetime.now().year)
     today_str = datetime.datetime.now().strftime('%Y%m%d')
@@ -2025,11 +2139,11 @@ def handle_competition_teams(args, data_dir, filename):
         return
     sub_path = fill_url_pattern(pattern, args)
     url = urljoin(site_info["url"], sub_path)
-    html_content = extract_html_from_url(url)
-    teams_data = extract_teams_with_llm(html_content, args.site, args.competition)
+    html_content = extract_html_from_url(url, extractor=args.html_extractor)
+    model_type = parse_model_shorthand(args.model) if args.model else get_default_model_for_extract_type("competition-teams")
+    teams_data = extract_teams_with_llm(html_content, args.site, args.competition, model_type=model_type)
     save_teams_cache(args.site, teams_data, args.competition)
     display_teams(teams_data, args.site)
-    # Save to data dir
     file_path = os.path.join(data_dir, filename + "_competition-teams.json")
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(teams_data, f, ensure_ascii=False, indent=2)
@@ -2048,7 +2162,6 @@ def handle_competition_stats(args, data_dir, filename):
         return
     sub_path = fill_url_pattern(pattern, args)
     url = urljoin(site_info["url"], sub_path)
-    # Caching logic for competition stats HTML
     cache_dir = get_cache_dir(args.site)
     safe_competition = re.sub(r'[^\w\-_.]', '_', args.competition)
     cache_file = cache_dir / f"competitionstats_{safe_competition}.html"
@@ -2063,12 +2176,12 @@ def handle_competition_stats(args, data_dir, filename):
         else:
             use_cache = False
     if not use_cache:
-        html_content = extract_html_from_url(url)
+        html_content = extract_html_from_url(url, extractor=args.html_extractor)
         with open(cache_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"\033[92m✓ Cached competition stats HTML: {cache_file}\033[0m")
-    data = extract_competition_data_with_llm(html_content, args.site, args.competition)
-    # Save to persistent JSON file in data/<today>/
+    model_type = parse_model_shorthand(args.model) if args.model else get_default_model_for_extract_type("competition-stats")
+    data = extract_competition_data_with_llm(html_content, args.site, args.competition, model_type=model_type)
     file_path = os.path.join(data_dir, filename + "_competition-stats.json")
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -2093,30 +2206,30 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
         html_by_type = {}
         if item == "historical":
             year = args.year if args.year else current_year
-            html = extract_team_historical(args.site, args.team, year, args.force_fetch, args=args)
+            html = extract_team_historical(args.site, args.team, year, args.force_fetch, args=args, html_extractor=args.html_extractor)
             html_by_type["historical"] = html
         elif item == "news":
-            html = extract_team_news(args.site, args.team, args.force_fetch, args=args)
+            html = extract_team_news(args.site, args.team, args.force_fetch, args=args, html_extractor=args.html_extractor)
             html_by_type["news"] = html
         elif item == "appearances":
             if not args.competition:
                 print("\033[91mError: --competition is required for appearances extraction.\033[0m")
                 continue
             year = args.year if args.year else current_year
-            html = extract_team_appearances(args.site, args.team, args.competition, year, args.force_fetch, args=args)
+            html = extract_team_appearances(args.site, args.team, args.competition, year, args.force_fetch, args=args, html_extractor=args.html_extractor)
             html_by_type["appearances"] = html
         elif item == "squad":
             year = args.year if args.year else current_year
-            html = extract_team_squad(args.site, args.team, year, args.force_fetch, args=args)
+            html = extract_team_squad(args.site, args.team, year, args.force_fetch, args=args, html_extractor=args.html_extractor)
             html_by_type["squad"] = html
         elif item == "h2h":
-            html = extract_team_h2h(args.site, args.team, args.force_fetch, args=args)
+            html = extract_team_h2h(args.site, args.team, args.force_fetch, args=args, html_extractor=args.html_extractor)
             html_by_type["h2h"] = html
         elif item == "h2h-vs":
             if not args.vs_team:
                 print("\033[91mError: --vs-team is required for h2h-vs extraction.\033[0m")
                 continue
-            html = extract_team_h2h_vs(args.site, args.team, args.vs_team, args.force_fetch, args=args)
+            html = extract_team_h2h_vs(args.site, args.team, args.vs_team, args.force_fetch, args=args, html_extractor=args.html_extractor)
             html_by_type["h2h-vs"] = html
         elif item == "team-stats" or item == "stats":
             html = extract_team_stats(
@@ -2125,7 +2238,8 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 group=args.group or "",
                 competition=args.competition or "",
                 force_fetch=args.force_fetch,
-                args=args
+                args=args,
+                html_extractor=args.html_extractor
             )
             html_by_type[item] = html
         elif item == "odds-historical":
@@ -2142,7 +2256,8 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 args.year,
                 page=page,
                 force_fetch=args.force_fetch,
-                args=args
+                args=args,
+                html_extractor=args.html_extractor
             )
             html_by_type["odds-historical"] = html
         elif item == "odds":
@@ -2156,7 +2271,8 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 args.group,
                 args.competition,
                 force_fetch=args.force_fetch,
-                args=args
+                args=args,
+                html_extractor=args.html_extractor
             )
             html_by_type["odds"] = html
         elif item == "outrights":
@@ -2170,7 +2286,8 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 args.group,
                 args.competition,
                 force_fetch=args.force_fetch,
-                args=args
+                args=args,
+                html_extractor=args.html_extractor
             )
             html_by_type["outrights"] = html
         elif item == "odds-match":
@@ -2202,7 +2319,8 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
             continue
         if html_by_type:
             meta_with_url = dict(meta)
-            result = extract_team_data_with_llm(args.team, html_by_type, meta_with_url, save_dir=str(data_dir), save_prefix=f"{filename}_{item}")
+            model_type = parse_model_shorthand(args.model) if args.model else get_default_model_for_extract_type(item)
+            result = extract_team_data_with_llm(args.team, html_by_type, meta_with_url, save_dir=str(data_dir), save_prefix=f"{filename}_{item}", model_type=model_type)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             save_team_data_cache(cache_path, result)
             print(f"\033[92m✓ Saved extracted {item} data to {cache_path}\033[0m")
@@ -2394,6 +2512,8 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
 
 def main():
     args = _parse_args()
+    if not hasattr(args, 'html_extractor') or args.html_extractor is None:
+        args.html_extractor = 'playwright'
     
     # Set global logging level based on command line argument
     log_level_map = {

@@ -22,12 +22,12 @@ Your responsibilities include:
 5. Ensuring accuracy and completeness of the extracted information
 
 IMPORTANT: For each competition, you MUST extract the URL that points to the competition's page. The URL is mandatory. If the URL is not directly visible, you must infer it from the context, links, or any available information. Do NOT omit the URL field. If you cannot find a URL, make a best effort to construct it based on the patterns used on the website, and clearly indicate it is inferred.
-
-IMPORTANT: Only include competitions that are associated with the specified group: {group}. Ignore and do not return competitions that do not match the given group. The group to match will be provided in the extraction context or prompt.
-
+IMPORTANT: Only include competitions that are associated with the specified group: latest. Ignore and do not return competitions that do not match the given group. The group to match will be provided in the extraction context or prompt.
 IMPORTANT: The value of the "group" field in your output must be kept as-is, exactly as it appears in the URL (do not translate, modify, or mangle it in any way). Preserve the syntax and casing as found in the URL.
+**CRITICAL**: for any competition ONLY return the latest season, IGNORE older seasons.
+**CRITICAL**: IGNORE any competition whose latest season or year is older than 4 years ago (the year can be found in the name, url or near its position in the content), current year is 2025.
 
-Return ALL leagues, tournaments, and cups for the specified group. Do not limit the results to a single competition.
+Return leagues, tournaments, and cups that satisfy the above criteria.
 
 When analyzing content, look for:
 - League names and abbreviations

@@ -53,7 +53,21 @@ SITE_URLS = {
         "paths": {
             "competitions": "/it/calcio",
             "odds": "/it/calcio/{group}/{competition}",
-            "odds-match": "/it/calcio/{group}/{competition}/{team}-{vs_team}"
-        }
-    }
+            "odds-match": "/it/calcio/{group}/{competition}/{team}-{vs_team}",
+        },
+    },
+    "eloratings": {
+        "url": "https://www.eloratings.net",
+        "description": "World Football Elo Ratings",
+        "cache_days": {"default": 1, "competition": 1},
+        "paths": {
+            "competitions": "/",
+            "historical": "/latest",
+            "fixtures": "/fixtures",
+            "competition-historical": "/{year}_{competition}_results",
+            "competition-teams": "/{year}_{competition}",
+            "competition-stats": "/{year}_{competition}",
+            "competition-fixtures": "/{competition}_fixtures",
+        },
+    },
 }
