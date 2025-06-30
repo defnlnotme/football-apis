@@ -35,7 +35,13 @@ from urllib.parse import urljoin
 import datetime
 import os
 import pprint
-from prompts import *
+# Import specific items from prompts to avoid conflicts with local Models class
+from prompts import (
+    COMPETITION_EXTRACTION_PROMPT,
+    TEAM_EXTRACTION_PROMPT,
+    TEAM_DATA_EXTRACTION_PROMPT,
+    COMPETITION_DATA_EXTRACTION_PROMPT
+)
 import mimetypes
 import requests
 from urllib.parse import urlparse
@@ -2078,7 +2084,9 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
             print(f"\033[92m✓ Using cached {item} data: {cache_path}\033[0m")
             try:
                 result = load_team_data_cache(cache_path)
-                print(json.dumps(result, ensure_ascii=False, indent=2))
+                # For odds-match, the data is already logged in extract_team_odds_match
+                if item != "odds-match":
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
             except Exception as e:
                 print(f"\033[91mError loading cached {item} data: {e}\033[0m")
             continue
@@ -2170,7 +2178,8 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
             if not args.group or not args.competition or not args.team or not args.vs_team:
                 print("\033[91mError: --group, --competition, --team, and --vs-team are required for odds-match extraction.\033[0m")
                 continue
-            html = extract_team_odds_match(
+            # odds-match already returns structured JSON data, no need for LLM extraction
+            result_json = extract_team_odds_match(
                 args.site,
                 args.team,
                 args.vs_team,
@@ -2179,7 +2188,15 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 force_fetch=args.force_fetch,
                 args=args
             )
-            html_by_type["odds-match"] = html
+            # Parse the JSON result
+            try:
+                result = json.loads(result_json)
+                # Save to cache
+                save_team_data_cache(cache_path, result)
+                print(f"\033[92m✓ Saved extracted {item} data to {cache_path}\033[0m")
+            except json.JSONDecodeError as e:
+                print(f"\033[91mError parsing odds-match result: {e}\033[0m")
+            continue  # Skip the LLM extraction process for odds-match
         else:
             print(f"\033[91mUnknown extract value: {item}\033[0m")
             continue
@@ -2215,6 +2232,12 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
             with open(json_cache_path, 'r', encoding='utf-8') as f:
                 cached_data = json.load(f)
                 logger.info(f"Using cached market data: {json_cache_path}")
+                # Log cached odds to stdout
+                print(f"\n\033[94m=== Cached Odds Markets: {team} vs {vs_team} ===\033[0m")
+                print(f"\033[92mSite: {site_name}\033[0m")
+                print(f"\033[92mCompetition: {competition}\033[0m")
+                print(f"\033[92mTotal Markets: {len(cached_data.get('markets', []))}\033[0m")
+                print(json.dumps(cached_data, ensure_ascii=False, indent=2))
                 return json.dumps(cached_data, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.warning(f"Error loading cached market data: {e}")
@@ -2226,6 +2249,49 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
         
         # Run the async scraping function - now returns List[Dict[str, Any]]
         collected_markets = asyncio.run(agent.scrape_odds_markets(url, team, vs_team, competition))
+        
+        # Log the extracted odds markets to stdout
+        print(f"\n\033[94m=== Extracted Odds Markets: {team} vs {vs_team} ===\033[0m")
+        print(f"\033[92mSite: {site_name}\033[0m")
+        print(f"\033[92mCompetition: {competition}\033[0m")
+        print(f"\033[92mTotal Markets: {len(collected_markets)}\033[0m")
+        
+        # Display each market in a readable format
+        for i, market in enumerate(collected_markets, 1):
+            if isinstance(market, dict):
+                market_name = market.get('market_name', 'Unknown Market')
+                market_type = market.get('market_type', 'unknown')
+                market_structure = market.get('structure', 'unknown')
+                
+                print(f"\n\033[95mMarket {i}: {market_name}\033[0m")
+                print(f"  Type: {market_type}")
+                print(f"  Structure: {market_structure}")
+                
+                if market_structure == 'table':
+                    headers = market.get('headers', [])
+                    rows = market.get('rows', [])
+                    if headers:
+                        print(f"  Headers: {headers}")
+                        print(f"  Rows: {len(rows)}")
+                        for j, row in enumerate(rows[:5]):  # Show first 5 rows
+                            print(f"    Row {j+1}: {row}")
+                        if len(rows) > 5:
+                            print(f"    ... and {len(rows) - 5} more rows")
+                
+                elif market_structure == 'list':
+                    odds_list = market.get('odds', [])
+                    if odds_list:
+                        print(f"  Odds: {len(odds_list)} items")
+                        for j, odds_item in enumerate(odds_list[:5]):  # Show first 5 odds
+                            print(f"    {j+1}. {odds_item}")
+                        if len(odds_list) > 5:
+                            print(f"    ... and {len(odds_list) - 5} more odds")
+                
+                elif market_structure == 'text':
+                    content = market.get('content', '')
+                    print(f"  Content: {content[:200]}{'...' if len(content) > 200 else ''}")
+            else:
+                print(f"\n\033[95mMarket {i}: {str(market)}\033[0m")
         
         # Save the structured market data as JSON
         market_data = {

@@ -3,6 +3,10 @@
 class Models:
     gemini_flash = "gemini-2.5-flash"
     gemini_flash_lite = "gemini-2.5-flash-lite-preview-06-17"
+    gemma3n_2b = "gemma-3n-e2b-it"
+    gemma3n_4b = "gemma-3n-e4b-it"
+    gemma3_1b = "gemma-3-1b-it"
+    gemma3_27b = "gemma-3-27b-it"
 
     flash = gemini_flash
     flash_lite = gemini_flash_lite
@@ -396,57 +400,6 @@ There are multiple stats groups, use one key per group, the schema is left to yo
 Return ONLY a valid JSON object.
 """
 
-ODDS_SYSTEM_PROMPT = """You are a specialized web scraping agent for football betting odds. Your task is to:
-
-1. Navigate to the provided URL
-2. Handle any popups, overlays, or modal dialogs that appear
-3. Follow the specific instructions provided in the prompt
-4. Wait for any dynamic content to load
-5. Return the complete HTML content for further processing
-
-Be thorough in your navigation and ensure all requested content is visible before scraping."""
-
-WEB_SCRAPING_AGENT_SYSTEM_PROMPT = """You are an intelligent web scraping assistant that analyzes web page content and determines the best actions to take for scraping betting odds markets.
-
-Your task is to:
-1. Analyze the current page state (buttons, content, structure)
-2. Understand the user's goal (scraping all markets)
-3. Determine the next best action to achieve that goal
-4. Return a clear action command
-
-IMPORTANT: For betting odds sites like oddschecker, you MUST click on market buttons to load the market data via AJAX. Look for buttons with text like:
-- "Vincente" (Winner)
-- "Totale gol - Under/Over" (Total Goals)
-- "Handicap Asiatico" (Asian Handicap)
-- "Margine Vittoria" (Victory Margin)
-- "Risultato Esatto" (Exact Result)
-- "Primo Tempo / Secondo Tempo" (First Half/Second Half)
-- "Tutti i Mercati" (All Markets)
-
-Available actions:
-- CLICK_BUTTON:"button text" - Click a specific button (use exact button text)
-- WAIT:seconds - Wait for specified seconds
-- SCROLL:direction - Scroll up/down/left/right
-- CHECK_CONTENT - Analyze if goal is achieved
-- STOP - Stop if goal is achieved or no more actions needed
-
-PRIORITY RULES:
-1. ALWAYS click market buttons first - these load the actual odds data
-2. Click "Tutti i Mercati" (All Markets) if available to expand all markets
-3. Click individual market buttons one by one to load their data
-4. Wait after each click for AJAX to load
-5. Only stop when all market buttons have been clicked and data loaded
-
-SELECTOR SELECTION GUIDELINES:
-- Be VERY specific when identifying elements
-- Look for unique identifiers like IDs, data attributes, or aria labels
-- Avoid generic selectors like just 'button' or 'div'
-- Prefer text-based identification when possible
-- Ensure the element is actually clickable and visible
-- Consider the element's context and parent containers
-
-Always prioritize user safety and avoid clicking suspicious elements. Be thorough in your analysis."""
-
 SELECTOR_AGENT_SYSTEM_PROMPT = """You are a specialized CSS selector expert for web scraping. Your task is to analyze HTML content and generate the most specific, reliable CSS selectors for targeting specific elements.
 
 Your expertise is in:
@@ -458,26 +411,62 @@ Your expertise is in:
 
 SPECIALIZED KNOWLEDGE FOR BETTING MARKETS:
 - Market categories are MAIN CONTAINERS that hold multiple betting options (e.g., "Esiti incontro", "Risultato finale")
-- Individual markets are single betting options within categories (e.g., "Vincente", "Pareggio", "Sconfitta")
+- Individual markets are single betting options within categories (e.g., "$team1", "Pareggio", "$team2" where $team1 and $team2 are the team names)
 - Promotional elements (e.g., "Bonus€€", "Promozioni") are NOT market categories
 - Navigation elements (e.g., "Menu", "Home") are NOT market categories
 - Utility buttons (e.g., "Close", "Back") are NOT market categories
-
-CRITICAL DISTINCTION FOR "ALL MARKETS" BUTTON:
-When looking for the "all markets" or "tutti i mercati" button:
-- This is a CONTROL BUTTON that expands or shows more market categories
-- This is NOT an individual market button like "Vincente", "Pareggio", "Sconfitta"
-- This button typically has text like "All Markets", "Tutti i Mercati", "Show More", "Expand", "More Markets"
-- This button is usually in headers, toolbars, or navigation areas
-- This button reveals additional market categories, not individual betting options
-- AVOID selecting buttons that are already visible individual markets
-
-When asked to find market categories, focus on:
-- Containers with category titles/headers
-- Elements that contain multiple betting options
-- Main betting interface components
-- Elements that are part of the core betting functionality
+- IMPORTANT: Numbers (including floats, e.g., 1.44, 2.10, etc.) are NOT market buttons. These are odds values, not categories or buttons. DO NOT consider any element whose text is a number or float as a market button.
+- In betting tables, the ROWS are market conditions (e.g., Team1_win, draw, Team2_win), the COLUMNS are bookmakers, and the FLOAT NUMBERS are the odds. Market buttons are used to expand or reveal these tables, not the numbers or conditions themselves.
+- Market buttons are always categories (e.g., "Totale gol", "Handicap Asiatico", "Risultato Esatto") and NEVER the odds or market conditions.
 
 IMPORTANT: Return only the raw CSS selector without any formatting, quotes, or backticks.
 
-Always prioritize specificity and reliability over simplicity.""" 
+Always prioritize specificity and reliability over simplicity."""
+
+MARKET_DATA_EXTRACTION_SYSTEM_PROMPT = """
+You are a specialized agent for extracting structured football betting market data from HTML content. Your job is to:
+
+1. Analyze the provided HTML for a single betting market (e.g., after clicking a market button)
+2. Extract all structured betting data for that market, including:
+   - Market name and type
+   - Market structure (table, list, or text)
+   - All betting conditions (e.g., Home Win, Draw, Away Win, Over 2.5, etc.)
+   - Odds values (decimal odds)
+   - Bookmaker names (if available)
+   - Market categories or subtypes (if present)
+3. Focus ONLY on the main betting interface, ignore ads, navigation, and promotional content
+4. Avoid extracting data that was already extracted for previous markets (if provided)
+5. Return ONLY valid JSON, no explanations or markdown
+
+EXPECTED OUTPUT FORMAT:
+Return a JSON object with this structure:
+{{
+  "market_name": "...",
+  "market_type": "...",
+  "structure": "table|list|text",
+  "data": {{
+    // For table structure:
+    "headers": ["column1", "column2", "column3"],
+    "rows": [
+      ["condition1", "odds1", "bookmaker1"],
+      ["condition2", "odds2", "bookmaker2"]
+    ]
+    // OR for list structure:
+    "odds": [
+      {{"condition": "Home Win", "odds": 1.44, "bookmaker": "Bet365"}},
+      {{"condition": "Draw", "odds": 4.8, "bookmaker": "Bet365"}}
+    ]
+    // OR for text structure:
+    "content": "raw text content"
+  }},
+  "timestamp": ...
+}}
+
+If no market data is found, return: {{"market_name": "...", "error": "No data found"}}
+
+IMPORTANT:
+- Only extract actual betting data, not promotional content
+- Look for the main betting interface, not ads or navigation
+- Return valid JSON only, no explanations or markdown formatting
+- DO NOT duplicate data that was already extracted for previous markets
+""" 
