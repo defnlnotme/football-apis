@@ -46,7 +46,10 @@ from prompts import (
     TEAM_DATA_EXTRACTION_PROMPT,
     COMPETITION_DATA_EXTRACTION_PROMPT,
     Models,
-    FIXTURES_EXTRACTION_PROMPT
+    FIXTURES_EXTRACTION_PROMPT,
+    TEAM_TRANSFERS_EXTRACTION_PROMPT,
+    TEAM_CONTRACTS_EXTRACTION_PROMPT,
+    STADIUM_EXTRACTION_PROMPT
 )
 
 import mimetypes
@@ -323,12 +326,19 @@ def create_competition_extraction_agent(group: str, model_type) -> ChatAgent:
         logger.error(f"Failed to create competition extraction agent: {str(e)}")
         raise e
 
-def validate_html_content(html: str, context: str = ""):
+def validate_html_content(html, context: str = ""):
     """
-    Validate that the provided HTML content is a non-empty string and contains at least one of the tags: <html, <div, or <table> (case-insensitive).
-    Raises a ValueError with a context-specific message if validation fails.
+    Validate that the HTML content is a non-empty string and contains at least one HTML tag. If a list is provided, validate each element.
     """
+    if isinstance(html, list):
+        for idx, h in enumerate(html):
+            try:
+                validate_html_content(h, f"{context} [index {idx}]")
+            except Exception as e:
+                raise ValueError(f"Invalid HTML at index {idx} for {context}: {e}")
+        return
     if not isinstance(html, str) or not html.strip() or not any(tag in html.lower() for tag in ["<html", "<div", "<table"]):
+        logger.debug(f"Non valid HTML: \n {html}")
         raise ValueError(f"Provided HTML content for {context} is not valid HTML or is empty.")
 
 def extract_competitions_with_llm(html_content: str, site_name: str, group: str = "latest", model_type=None) -> Dict[str, Any]:
@@ -1182,106 +1192,219 @@ def is_team_html_cache_valid(cache_path: pathlib.Path) -> bool:
     return file_age < TEAM_HTML_CACHE_TTL_SECONDS
 
 # --- Caching for extract_team_historical ---
-def extract_team_historical(site_name: str, team: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_historical(site_name: str, team: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("historical")
-    if not pattern:
+    patterns = paths.get("historical")
+    if not patterns:
         raise ValueError(f"No historical pattern for site {site_name}")
     # Ensure year_prev is set if needed
-    if pattern and '{year_prev}' in pattern:
+    if patterns and isinstance(patterns, str) and '{year_prev}' in patterns:
         if args and getattr(args, 'year_prev', None) is None and getattr(args, 'year', None) is not None:
             try:
                 setattr(args, 'year_prev', str(int(args.year) - 1))
             except Exception:
                 pass
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "historical", year=year)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'historical'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached historical HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"historical-{idx}", year=year)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'historical', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached historical HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        if pattern and '{year_prev}' in pattern:
+            if args and getattr(args, 'year_prev', None) is None and getattr(args, 'year', None) is not None:
+                try:
+                    setattr(args, 'year_prev', str(int(args.year) - 1))
+                except Exception:
+                    pass
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "historical", year=year)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'historical'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached historical HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 # --- Caching for extract_team_news ---
-def extract_team_news(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_news(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("news")
-    if not pattern:
+    patterns = paths.get("news")
+    if not patterns:
         raise ValueError(f"No news pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "news")
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'news'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached news HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"news-{idx}")
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'news', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached news HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "news")
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'news'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached news HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 # --- Caching for extract_team_appearances ---
-def extract_team_appearances(site_name: str, team: str, competition: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_appearances(site_name: str, team: str, competition: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("appearances")
-    if not pattern:
+    patterns = paths.get("appearances")
+    if not patterns:
         raise ValueError(f"No appearances pattern for site {site_name}")
     # Ensure year_prev is set if needed
-    if pattern and '{year_prev}' in pattern:
+    if patterns and isinstance(patterns, str) and '{year_prev}' in patterns:
         if args and getattr(args, 'year_prev', None) is None and getattr(args, 'year', None) is not None:
             try:
                 setattr(args, 'year_prev', str(int(args.year) - 1))
             except Exception:
                 pass
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "appearances", year=year, competition=competition)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', competition '{competition}', type 'appearances'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached appearances HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"appearances-{idx}", year=year, competition=competition)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', competition '{competition}', type 'appearances', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached appearances HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        if pattern and '{year_prev}' in pattern:
+            if args and getattr(args, 'year_prev', None) is None and getattr(args, 'year', None) is not None:
+                try:
+                    setattr(args, 'year_prev', str(int(args.year) - 1))
+                except Exception:
+                    pass
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "appearances", year=year, competition=competition)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', competition '{competition}', type 'appearances'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached appearances HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 # --- Caching for extract_team_squad ---
-def extract_team_squad(site_name: str, team: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_squad(site_name: str, team: str, year: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
     pattern = paths.get("squad")
     if not pattern:
         raise ValueError(f"No squad pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "squad", year=year)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'squad'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached squad HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    # Ensure year_prev is set if needed
+    if pattern and '{year_prev}' in pattern:
+        if args and getattr(args, 'year_prev', None) is None and getattr(args, 'year', None) is not None:
+            try:
+                setattr(args, 'year_prev', str(int(args.year) - 1))
+            except Exception:
+                pass
+    if isinstance(pattern, list):
+        htmls = []
+        for idx, pattern in enumerate(pattern):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"squad-{idx}", year=year)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'squad', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached squad HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = pattern
+        if pattern and '{year_prev}' in pattern:
+            if args and getattr(args, 'year_prev', None) is None and getattr(args, 'year', None) is not None:
+                try:
+                    setattr(args, 'year_prev', str(int(args.year) - 1))
+                except Exception:
+                    pass
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "squad", year=year)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'squad'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached squad HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 
 def create_team_data_extraction_agent(team: str, model_type: str) -> ChatAgent:
@@ -1312,131 +1435,191 @@ def create_team_data_extraction_agent(team: str, model_type: str) -> ChatAgent:
     return agent
 
 def extract_team_data_with_llm(team: str, html_by_type: dict, meta: dict, save_dir: str = "", save_prefix: str = "", model_type=None) -> dict:
-    for t, html in html_by_type.items():
-        validate_html_content(html, f"team '{team}', type '{t}'")
-    max_retries = 3
-    retry_count = 0
+    """
+    For each type in html_by_type, if the value is a list of HTMLs, query the agent separately for each and collect the results as a list.
+    If the value is a string, query the agent as before. The final result matches the input structure.
+    """
+    results = {}
     if model_type is None:
-        model_type = get_default_model_for_extract_type(list(html_by_type.keys())[0] if html_by_type else "team-stats")
-    while retry_count < max_retries:
-        try:
-            total_html_length = sum(len(html) for html in html_by_type.values())
-            html_types = list(html_by_type.keys())
-            logger.info(f"Starting team data extraction for {team} (HTML types: {html_types}, total length: {total_html_length} chars)")
-            agent = create_team_data_extraction_agent(team, model_type)
-            prompt = f"""
+        model_type = get_default_model_for_extract_type(list(html_by_type.keys())[0])
+    for extract_type, htmls in html_by_type.items():
+        if isinstance(htmls, list):
+            results[extract_type] = []
+            for idx, html in enumerate(htmls):
+                validate_html_content(html, f"team '{team}', type '{extract_type}', index {idx}")
+                max_retries = 3
+                retry_count = 0
+                while retry_count < max_retries:
+                    try:
+                        agent = create_team_data_extraction_agent(team, model_type)
+                        prompt = f"""
 Extract the following data for team: {team}
 
 Meta information:
 {json.dumps(meta, ensure_ascii=False, indent=2)}
 
-HTML content for each type:
-"""
-            for t, html in html_by_type.items():
-                prompt += f"\n--- {t.upper()} HTML ---\n{html}\n"
-            prompt += "\nPlease return the extracted data in the required JSON format."
-            human_message = BaseMessage.make_user_message(
-                role_name="Human",
-                content=prompt
-            )
-            response = agent.step(human_message)
-            agent_response = response.msgs[0].content if response.msgs else ""
-            
-            try:
-                result = extract_json_from_response(agent_response)
-                # Sort historical matches by date if present
-                if "historical" in result and isinstance(result["historical"], list):
-                    from datetime import datetime
-                    def parse_date_safe(d):
-                        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):  # try common formats
-                            try:
-                                return datetime.strptime(d, fmt)
-                            except Exception:
-                                continue
-                        try:
-                            return datetime.fromisoformat(d)
-                        except Exception:
-                            return d  # fallback: string sort
-                    result["historical"] = sorted(
-                        result["historical"],
-                        key=lambda m: parse_date_safe(m.get("date", ""))
-                    )
-                return result
-            except Exception as e:
-                logger.error(f"Failed to extract JSON: {e}")
-                if save_dir and save_prefix:
-                    raw_path = os.path.join(save_dir, save_prefix + "_raw.txt")
-                    with open(raw_path, "w", encoding="utf-8") as f:
-                        f.write(agent_response)
-                    print(f"\033[93m⚠ Failed to extract JSON, saved raw agent response to {raw_path}\033[0m")
-                raise
-                
-        except Exception as e:
-            error_str = str(e).lower()
-            if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
-                logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
-                
-                # Record the rate limit error and rotate API key
-                api_key_manager.record_rate_limit_error(Models.flash_lite)
-                
-                retry_count += 1
-                if retry_count < max_retries:
-                    logger.info(f"Retrying with new API key...")
-                    time.sleep(2)  # Brief pause before retry
-                    continue
-                else:
-                    logger.error(f"Max retries reached for rate limit errors")
-                    raise
-            else:
-                # Non-rate-limit error, don't retry
-                logger.error(f"Error in team data extraction: {e}")
-                raise
-    
-    # This should never be reached, but return empty dict to satisfy type checker
-    return {}
+--- {extract_type.upper()} HTML (index {idx}) ---
+{html}
 
-def extract_team_h2h(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+Please return the extracted data in the required JSON format.
+"""
+                        human_message = BaseMessage.make_user_message(
+                            role_name="Human",
+                            content=prompt
+                        )
+                        response = agent.step(human_message)
+                        agent_response = response.msgs[0].content if response.msgs else ""
+                        result = extract_json_from_response(agent_response)
+                        results[extract_type].append(result)
+                        break
+                    except Exception as e:
+                        error_str = str(e).lower()
+                        if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
+                            logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
+                            api_key_manager.record_rate_limit_error(Models.flash_lite)
+                            retry_count += 1
+                            if retry_count < max_retries:
+                                logger.info(f"Retrying with new API key...")
+                                time.sleep(2)
+                                continue
+                            else:
+                                logger.error(f"Max retries reached for rate limit errors")
+                                raise
+                        else:
+                            logger.error(f"Error in team data extraction: {e}")
+                            raise
+        else:
+            html = htmls
+            validate_html_content(html, f"team '{team}', type '{extract_type}'")
+            max_retries = 3
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    agent = create_team_data_extraction_agent(team, model_type)
+                    prompt = f"""
+Extract the following data for team: {team}
+
+Meta information:
+{json.dumps(meta, ensure_ascii=False, indent=2)}
+
+--- {extract_type.upper()} HTML ---
+{html}
+
+Please return the extracted data in the required JSON format.
+"""
+                    human_message = BaseMessage.make_user_message(
+                        role_name="Human",
+                        content=prompt
+                    )
+                    response = agent.step(human_message)
+                    agent_response = response.msgs[0].content if response.msgs else ""
+                    result = extract_json_from_response(agent_response)
+                    results[extract_type] = result
+                    break
+                except Exception as e:
+                    error_str = str(e).lower()
+                    if '429' in error_str or 'rate limit' in error_str or 'quota' in error_str:
+                        logger.warning(f"Rate limit ({retry_count + 1}/{max_retries}): {e}")
+                        api_key_manager.record_rate_limit_error(Models.flash_lite)
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            logger.info(f"Retrying with new API key...")
+                            time.sleep(2)
+                            continue
+                        else:
+                            logger.error(f"Max retries reached for rate limit errors")
+                            raise
+                    else:
+                        logger.error(f"Error in team data extraction: {e}")
+                        raise
+    return results
+
+def extract_team_h2h(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("h2h")
-    if not pattern:
+    patterns = paths.get("h2h")
+    if not patterns:
         raise ValueError(f"No h2h pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "h2h")
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'h2h'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached h2h HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"h2h-{idx}")
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'h2h', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached h2h HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "h2h")
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'h2h'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached h2h HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 # --- Caching for extract_team_h2h_vs ---
-def extract_team_h2h_vs(site_name: str, team: str, vs_team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_h2h_vs(site_name: str, team: str, vs_team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("h2h-vs")
-    if not pattern:
+    patterns = paths.get("h2h-vs")
+    if not patterns:
         raise ValueError(f"No h2h-vs pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "h2h-vs", vs_team=vs_team)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', vs_team '{vs_team}', type 'h2h-vs'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached h2h-vs HTML for {team} vs {vs_team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"h2h-vs-{idx}", vs_team=vs_team)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', vs_team '{vs_team}', type 'h2h-vs', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached h2h-vs HTML for {team} vs {vs_team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "h2h-vs", vs_team=vs_team)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', vs_team '{vs_team}', type 'h2h-vs'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached h2h-vs HTML for {team} vs {vs_team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 # Utility to compute aggregate stats for h2h-vs filtered matches
 
@@ -1521,7 +1704,7 @@ def extract_competition_data_with_llm(html_content: str, site_name: str, competi
     # This should never be reached, but return error to satisfy type checker
     return {"error": "Unexpected error in competition data extraction"}
 
-def extract_team_stats(site_name: str, team: str, group: str = "", competition: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_stats(site_name: str, team: str, group: str = "", competition: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     site_name = site_name or ""
     team = team or ""
     group = group or ""
@@ -1530,22 +1713,46 @@ def extract_team_stats(site_name: str, team: str, group: str = "", competition: 
         raise ValueError(f"Invalid or missing site_name '{site_name}' in SITE_URLS")
     base_url = SITE_URLS[site_name]["url"]
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("team-stats")
-    cache_path = get_team_html_cache_path(site_name, team, "team-stats", competition=competition)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', type 'team-stats'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached team-stats HTML for {team} is invalid, refetching...")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(base_url, sub_path)
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    patterns = paths.get("team-stats")
+    if not patterns:
+        raise ValueError(f"No team-stats pattern for site {site_name}")
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(base_url, sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"team-stats-{idx}", competition=competition)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', type 'team-stats', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached team-stats HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(base_url, sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "team-stats", competition=competition)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', competition '{competition}', type 'team-stats'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached team-stats HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 # --- Caching for extract_team_outrights ---
 def extract_team_outrights(site_name: str, team: str, group: str, competition: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
@@ -2086,7 +2293,8 @@ def _handle_extract(args):
         handle_competition_stats(args, data_dir, filename)
     team_data_types = {
         "historical", "news", "appearances", "squad", "h2h", "h2h-vs", "team-stats", "team-overview",
-        "team-positions", "team-contracts", "stats", "odds-historical", "odds", "outrights", "odds-match"
+        "team-positions", "team-contracts", "team-fixtures", "team-transfers", "stats", "odds-historical", 
+        "odds", "outrights", "odds-match", "stadium"
     }
     requested_team_data = [t for t in extract_types if t in team_data_types]
     if requested_team_data:
@@ -2361,6 +2569,39 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
             except json.JSONDecodeError as e:
                 print(f"\033[91mError parsing odds-match result: {e}\033[0m")
             continue  # Skip the LLM extraction process for odds-match
+        elif item == "team-fixtures":
+            year = args.year if args.year else current_year
+            htmls = extract_team_fixtures(
+                args.site,
+                args.team,
+                group=args.group or "",
+                year=year,
+                force_fetch=args.force_fetch,
+                args=args,
+                html_extractor=args.html_extractor
+            )
+            # Store all htmls under team-fixtures
+            html_by_type["team-fixtures"] = htmls
+        elif item == "team-transfers":
+            year = args.year if args.year else current_year
+            html = extract_team_transfers(
+                args.site,
+                args.team,
+                year=year,
+                force_fetch=args.force_fetch,
+                args=args,
+                html_extractor=args.html_extractor
+            )
+            html_by_type["team-transfers"] = html
+        elif item == "stadium":
+            html = extract_stadium(
+                args.site,
+                args.team,
+                force_fetch=args.force_fetch,
+                args=args,
+                html_extractor=args.html_extractor
+            )
+            html_by_type["stadium"] = html
         else:
             print(f"\033[91mUnknown extract value: {item}\033[0m")
             continue
@@ -2692,68 +2933,250 @@ def handle_competition_fixtures_extraction(args, data_dir, filename):
     print(f"\033[92m✓ Saved extracted competition fixtures to {file_path}\033[0m")
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
-def extract_team_overview(site_name: str, team: str, group: str = "", year: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_overview(site_name: str, team: str, group: str = "", year: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("team-overview")
-    if not pattern:
+    patterns = paths.get("team-overview")
+    if not patterns:
         raise ValueError(f"No team-overview pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "team-overview", year=year, group=group)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', year '{year}', type 'team-overview'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached team-overview HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"team-overview-{idx}", year=year, group=group)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', year '{year}', type 'team-overview', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached team-overview HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "team-overview", year=year, group=group)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', year '{year}', type 'team-overview'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached team-overview HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
-def extract_team_positions(site_name: str, team: str, group: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_positions(site_name: str, team: str, group: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("team-positions")
-    if not pattern:
+    patterns = paths.get("team-positions")
+    if not patterns:
         raise ValueError(f"No team-positions pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "team-positions", group=group)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-positions'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached team-positions HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"team-positions-{idx}", group=group)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-positions', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached team-positions HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "team-positions", group=group)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-positions'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached team-positions HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
-def extract_team_contracts(site_name: str, team: str, group: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+def extract_team_fixtures(site_name: str, team: str, group: str = "", year: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> list:
+    """
+    Extracts all team fixtures HTMLs for the given team. Always returns a list of HTML strings, one per pattern (even if only one).
+    """
     paths = SITE_URLS.get(site_name, {}).get("paths", {})
-    pattern = paths.get("team-contracts")
-    if not pattern:
+    patterns = paths.get("team-fixtures")
+    if not patterns:
+        raise ValueError(f"No team-fixtures pattern for site {site_name}")
+    if not isinstance(patterns, list):
+        patterns = [patterns]
+    html_contents = []
+    for idx, pattern in enumerate(patterns):
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, f"team-fixtures-{idx}", year=year, group=group)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', year '{year}', type 'team-fixtures', pattern {idx}")
+                html_contents.append(html_content)
+                continue
+            except ValueError:
+                logger.warning(f"Cached team-fixtures HTML for {team} (pattern {idx}) is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        html_contents.append(html_content)
+    return html_contents
+
+def extract_team_contracts(site_name: str, team: str, group: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    patterns = paths.get("team-contracts")
+    if not patterns:
         raise ValueError(f"No team-contracts pattern for site {site_name}")
-    sub_path = fill_url_pattern(pattern, args)
-    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
-    cache_path = get_team_html_cache_path(site_name, team, "team-contracts", group=group)
-    if not force_fetch and is_team_html_cache_valid(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        try:
-            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-contracts'")
-            return html_content
-        except ValueError:
-            logger.warning(f"Cached team-contracts HTML for {team} is invalid, refetching...")
-    html_content = extract_html_from_url(url, extractor=html_extractor)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    return html_content
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"team-contracts-{idx}", group=group)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-contracts', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached team-contracts HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "team-contracts", group=group)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-contracts'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached team-contracts HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
+
+def extract_team_transfers(site_name: str, team: str, year: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    patterns = paths.get("team-transfers")
+    if not patterns:
+        raise ValueError(f"No team-transfers pattern for site {site_name}")
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"team-transfers-{idx}", year=year)
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'team-transfers', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached team-transfers HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "team-transfers", year=year)
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', year '{year}', type 'team-transfers'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached team-transfers HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
+
+def extract_stadium(site_name: str, team: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str | list:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    patterns = paths.get("stadium")
+    if not patterns:
+        raise ValueError(f"No stadium pattern for site {site_name}")
+    if isinstance(patterns, list):
+        htmls = []
+        for idx, pattern in enumerate(patterns):
+            sub_path = fill_url_pattern(pattern, args)
+            url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+            cache_path = get_team_html_cache_path(site_name, team, f"stadium-{idx}")
+            if not force_fetch and is_team_html_cache_valid(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+                try:
+                    validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'stadium', pattern {idx}")
+                    htmls.append(html_content)
+                    continue
+                except ValueError:
+                    logger.warning(f"Cached stadium HTML for {team} (pattern {idx}) is invalid, refetching...")
+            html_content = extract_html_from_url(url, extractor=html_extractor)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            htmls.append(html_content)
+        return htmls
+    else:
+        pattern = patterns
+        sub_path = fill_url_pattern(pattern, args)
+        url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+        cache_path = get_team_html_cache_path(site_name, team, "stadium")
+        if not force_fetch and is_team_html_cache_valid(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', team '{team}', type 'stadium'")
+                return html_content
+            except ValueError:
+                logger.warning(f"Cached stadium HTML for {team} is invalid, refetching...")
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return html_content
 
 def main():
     args = _parse_args()
@@ -2806,4 +3229,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -552,4 +552,48 @@ If no fixtures are found, return:
     "date_range": []
   }}
 }}
+"""
+
+TEAM_TRANSFERS_EXTRACTION_PROMPT = """
+You are an extraction agent. Extract all relevant transfer information for the given team from the provided HTML. Return a JSON object with any/all relevant fields (e.g., player, from_team, to_team, transfer_fee, date, contract_length, etc.). Omit fields if not present. Example output:
+
+{{
+  "transfers": [
+    {{"player": "John Doe", "from_team": "Old FC", "to_team": "New FC", "transfer_fee": "€10m", "date": "2023-07-01", "contract_length": "3 years"}},
+    ...
+  ],
+  "summary": {{"total_transfers": 12}}
+}}
+"""
+
+TEAM_CONTRACTS_EXTRACTION_PROMPT = """
+You are an extraction agent. Extract all available information about player contracts, agents, contract durations, clauses, and related details for the team from the provided HTML. Return a JSON object with any/all relevant fields. Omit fields if not present. Example output:
+
+{{
+  "contracts": [
+    {{"player": "John Doe", "agent": "Agent Name", "contract_start": "2023-07-01", "contract_end": "2026-06-30", "clause": "Release clause €50m"}},
+    ...
+  ],
+  "summary": {{"total_contracts": 25}}
+}}
+"""
+
+STADIUM_EXTRACTION_PROMPT = """
+You are an extraction agent. Extract all relevant stadium information from the provided HTML. Return a JSON object with any/all relevant fields, such as name, location, capacity, year_built, surface, tenants, coordinates, and any other details found. Omit fields if not present. Example output:
+
+{{
+  "stadium": {{
+    "name": "San Siro",
+    "location": "Milan, Italy",
+    "capacity": 75923,
+    "year_built": 1926,
+    "surface": "Grass",
+    "tenants": ["AC Milan", "Inter Milan"],
+    "coordinates": {{"lat": 45.4781, "lon": 9.1240}},
+    "address": "Piazzale Angelo Moratti, 20151 Milano MI, Italy",
+    "description": "The San Siro is a multi-purpose stadium in Milan, Italy. It is currently used mostly for football matches and is the home stadium of AC Milan and Inter Milan. The stadium has a capacity of 75,923 spectators and was built in 1926.",
+    "website": "https://www.sansirostadium.com/"
+    // ... any other fields found ...
+  }}
+}}
 """ 

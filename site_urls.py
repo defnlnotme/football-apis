@@ -82,10 +82,23 @@ SITE_URLS = {
             "team-stats": "/{team}/leistungsdaten/verein/{group}/plus/0?reldata={competition}%26{year}",
             "team-positions": "/{team}/kadernachposition/verein/46",
             "team-contracts": "/{team}/berateruebersicht/verein/46",
-            "fixtures": "/{competition}/spieltag/wettbewerb/{competition_code}/spieltag/{matchday}/saison_id/{season}",
-            "news": "/{competition}/news/wettbewerb/{competition_code}",
+            "team-fixtures": [
+                "/{team}/spielplandatum/verein/{group}",
+                "/{team}/tabelle/verein/{group}/saison_id/{year}"
+            ],
+            "team-transfers": "/{team}/transfers/verein/{group}/saison_id/{year}",
+            "news": "/{team}/news/verein/{group}",
+            "h2h": "/{team}/bilanz/verein/{group}/plus/0?saison_id={year}&clubs_in_comp_id={competition}",
+            "stadium": "/{team}/stadion/verein/{group}/saison_id/{year}",
         },
     },
+    "stadiumdb": {
+        "url": "https://stadiumdb.com",
+        "description": "Football stadiums database",
+        "paths": {
+            "stadium": "/stadiums/{group}/{team}",
+        }
+    }
 }
 
 VALID_EXTRACT_TYPES = [
@@ -110,4 +123,7 @@ VALID_EXTRACT_TYPES = [
     "fixtures",
     "competition-fixtures",
     "team-overview",
+    "team-fixtures",
+    "team-transfers",
+    "stadium",
 ]

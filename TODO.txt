@@ -1,0 +1,5 @@
+# setup
+- install playwright env (with micromamba)
+- uv pip install requirements
+- .envrc with GEMINI_API_KEY (or other models)
+- check apikeys.json (for api based client)
