@@ -64,10 +64,14 @@ SITE_URLS = {
             "competitions": "/",
             "historical": "/latest",
             "fixtures": "/fixtures",
-            "competition-historical": "/{year}_{competition}_results",
-            "competition-teams": "/{year}_{competition}",
-            "competition-stats": "/{year}_{competition}",
+            "competition-historical": "/{competition}_results",
+            "competition-teams": "/{competition}",
+            "competition-stats": "/{competition}",
             "competition-fixtures": "/{competition}_fixtures",
         },
     },
 }
+
+VALID_EXTRACT_TYPES = [
+    "competitions", "competition-teams", "competition-stats", "competition-historical", "historical", "news", "appearances", "squad", "h2h", "h2h-vs", "team-stats", "stats", "odds-historical", "odds", "outrights", "odds-match", "fixtures", "competition-fixtures"
+]

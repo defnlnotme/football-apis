@@ -35,7 +35,7 @@ import logging
 import traceback
 from typing import Dict, List, Tuple, Optional, Any
 import shutil
-from site_urls import SITE_URLS
+from site_urls import SITE_URLS, VALID_EXTRACT_TYPES
 from urllib.parse import urljoin
 import datetime
 import pprint
@@ -45,7 +45,8 @@ from prompts import (
     TEAM_EXTRACTION_PROMPT,
     TEAM_DATA_EXTRACTION_PROMPT,
     COMPETITION_DATA_EXTRACTION_PROMPT,
-    Models
+    Models,
+    FIXTURES_EXTRACTION_PROMPT
 )
 
 import mimetypes
@@ -1849,6 +1850,7 @@ def get_default_model_for_extract_type(extract_type: str) -> str:
         "odds": Models.flash_lite,
         "outrights": Models.flash_lite,
         "odds-match": Models.flash_lite,
+        "fixtures": Models.flash_lite,
     }
     return mapping.get(extract_type, Models.flash_lite)
 
@@ -2056,6 +2058,12 @@ def _handle_extract(args):
     if not hasattr(args, 'html_extractor') or args.html_extractor is None:
         args.html_extractor = 'playwright'
     extract_types = [x.strip().lower() for x in args.extract.split(",") if x.strip()] if args.extract else []
+    unknown_types = [t for t in extract_types if t not in VALID_EXTRACT_TYPES]
+    if unknown_types:
+        print(f"\033[91mError: Unknown extract type(s): {', '.join(unknown_types)}\033[0m")
+        print(f"\033[93mValid extract types are: {', '.join(sorted(VALID_EXTRACT_TYPES))}\033[0m")
+        import sys
+        sys.exit(1)
     current_year = str(datetime.datetime.now().year)
     today_str = datetime.datetime.now().strftime('%Y%m%d')
     data_dir = os.path.join(base_dir, "data", today_str)
@@ -2080,6 +2088,10 @@ def _handle_extract(args):
     requested_team_data = [t for t in extract_types if t in team_data_types]
     if requested_team_data:
         handle_team_data(args, data_dir, filename, requested_team_data, meta)
+    if "fixtures" in extract_types:
+        handle_fixtures_extraction(args, data_dir, filename)
+    if "competition-fixtures" in extract_types:
+        handle_competition_fixtures_extraction(args, data_dir, filename)
     return
 
 
@@ -2509,6 +2521,141 @@ def extract_team_odds_match(site_name: str, team: str, vs_team: str, group: str,
         print(f"\033[91mTerminating script due to Playwright error.\033[0m")
         # Terminate the script as requested
         sys.exit(1)
+
+def extract_fixtures(site_name: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> dict:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    pattern = paths.get("fixtures")
+    if not pattern:
+        raise ValueError(f"No fixtures pattern for site {site_name}")
+    sub_path = fill_url_pattern(pattern, args) if args else pattern
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_dir = get_cache_dir(site_name)
+    cache_file = cache_dir / "fixtures.html"
+    if not force_fetch and cache_file.exists():
+        file_age = time.time() - cache_file.stat().st_mtime
+        if file_age < 3600:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', fixtures")
+            except ValueError:
+                logger.warning(f"Cached fixtures HTML for {site_name} is invalid, refetching...")
+                html_content = None
+            else:
+                # Use cached
+                pass
+        else:
+            html_content = None
+    else:
+        html_content = None
+    if html_content is None:
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+    # LLM extraction
+    from camel.agents import ChatAgent
+    from camel.messages import BaseMessage
+    model_type = get_default_model_for_extract_type("fixtures")
+    model = ModelFactory.create(model_platform=ModelPlatformType.GEMINI, model_type=model_type)
+    system_prompt = FIXTURES_EXTRACTION_PROMPT
+    agent = ChatAgent(model=model, system_message=system_prompt)
+    prompt = f"""
+Extract all upcoming or scheduled football fixtures from the following HTML for site: {site_name}.
+
+HTML Content:
+{html_content}
+
+Return ONLY a valid JSON object as your output, with no extra text or explanation.
+"""
+    human_message = BaseMessage.make_user_message(role_name="Human", content=prompt)
+    response = agent.step(human_message)
+    agent_response = response.msgs[0].content if response.msgs else ""
+    try:
+        result = extract_json_from_response(agent_response)
+    except Exception as e:
+        logger.error(f"Failed to extract fixtures JSON: {e}")
+        result = {"fixtures": [], "summary": {"total_fixtures": 0, "competitions": [], "date_range": []}, "error": str(e)}
+    return result
+
+
+def handle_fixtures_extraction(args, data_dir, filename):
+    site_name = args.site
+    result = extract_fixtures(site_name, force_fetch=args.force_fetch, args=args, html_extractor=args.html_extractor)
+    file_path = os.path.join(data_dir, filename + "_fixtures.json")
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    print(f"\033[92m✓ Saved extracted fixtures to {file_path}\033[0m")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+def extract_competition_fixtures(site_name: str, competition: str, force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> dict:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    pattern = paths.get("competition-fixtures")
+    if not pattern:
+        raise ValueError(f"No competition-fixtures pattern for site {site_name}")
+    if args is not None:
+        if getattr(args, 'competition', None) is None:
+            setattr(args, 'competition', competition)
+    sub_path = fill_url_pattern(pattern, args) if args else pattern.replace("{competition}", competition)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_dir = get_cache_dir(site_name)
+    cache_file = cache_dir / f"competition_{competition}_fixtures.html"
+    if not force_fetch and cache_file.exists():
+        file_age = time.time() - cache_file.stat().st_mtime
+        if file_age < 3600:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            try:
+                validate_html_content(html_content, f"site '{site_name}', competition-fixtures")
+            except ValueError:
+                logger.warning(f"Cached competition-fixtures HTML for {site_name} is invalid, refetching...")
+                html_content = None
+            else:
+                pass
+        else:
+            html_content = None
+    else:
+        html_content = None
+    if html_content is None:
+        html_content = extract_html_from_url(url, extractor=html_extractor)
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+    from camel.agents import ChatAgent
+    from camel.messages import BaseMessage
+    model_type = get_default_model_for_extract_type("fixtures")
+    model = ModelFactory.create(model_platform=ModelPlatformType.GEMINI, model_type=model_type)
+    system_prompt = FIXTURES_EXTRACTION_PROMPT
+    agent = ChatAgent(model=model, system_message=system_prompt)
+    prompt = f"""
+Extract all upcoming or scheduled football fixtures for competition '{competition}' from the following HTML for site: {site_name}.
+
+HTML Content:
+{html_content}
+
+Return ONLY a valid JSON object as your output, with no extra text or explanation.
+"""
+    human_message = BaseMessage.make_user_message(role_name="Human", content=prompt)
+    response = agent.step(human_message)
+    agent_response = response.msgs[0].content if response.msgs else ""
+    try:
+        result = extract_json_from_response(agent_response)
+    except Exception as e:
+        logger.error(f"Failed to extract competition-fixtures JSON: {e}")
+        result = {"fixtures": [], "summary": {"total_fixtures": 0, "competitions": [], "date_range": []}, "error": str(e)}
+    return result
+
+
+def handle_competition_fixtures_extraction(args, data_dir, filename):
+    site_name = args.site
+    competition = args.competition
+    if not competition:
+        print("\033[91mError: --competition is required for competition-fixtures extraction.\033[0m")
+        return
+    result = extract_competition_fixtures(site_name, competition, force_fetch=args.force_fetch, args=args, html_extractor=args.html_extractor)
+    file_path = os.path.join(data_dir, filename + "_competition-fixtures.json")
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    print(f"\033[92m✓ Saved extracted competition fixtures to {file_path}\033[0m")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 def main():
     args = _parse_args()

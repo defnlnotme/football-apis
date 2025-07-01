@@ -30,7 +30,7 @@ IMPORTANT: The value of the "group" field in your output must be kept as-is, exa
 Return leagues, tournaments, and cups that satisfy the above criteria.
 
 When analyzing content, look for:
-- League names and abbreviations
+- League (or confederation) names and abbreviations
 - Tournament names and seasons
 - Cup competitions
 - International competitions
@@ -469,4 +469,55 @@ IMPORTANT:
 - Look for the main betting interface, not ads or navigation
 - Return valid JSON only, no explanations or markdown formatting
 - DO NOT duplicate data that was already extracted for previous markets
+"""
+
+FIXTURES_EXTRACTION_PROMPT = """
+You are a specialized football fixtures extraction agent. Your task is to analyze raw HTML content from a football website and extract a comprehensive list of all upcoming or scheduled matches (fixtures).
+
+For each fixture, extract:
+- date (YYYY-MM-DD or as shown)
+- time (if available)
+- home_team
+- away_team
+- competition (if available)
+- venue (if available)
+- status (e.g., scheduled, postponed, cancelled, finished)
+- odds (if available, as a dictionary of bookmaker -> odds)
+- any other relevant details
+
+Return ONLY a valid JSON object as your output, with no extra text or explanation.
+
+Example output:
+{{
+  "fixtures": [
+    {{
+      "date": "2024-08-12",
+      "time": "20:45",
+      "home_team": "AC Milan",
+      "away_team": "Inter Milan",
+      "competition": "Serie A",
+      "venue": "San Siro",
+      "status": "scheduled",
+      "odds": {{
+        "Bet365": {{"home": 2.10, "draw": 3.30, "away": 3.50}}
+      }}
+    }}
+    // ... more fixtures ...
+  ],
+  "summary": {{
+    "total_fixtures": 0,
+    "competitions": ["Serie A"],
+    "date_range": ["2024-08-12", "2024-09-01"]
+  }}
+}}
+
+If no fixtures are found, return:
+{{
+  "fixtures": [],
+  "summary": {{
+    "total_fixtures": 0,
+    "competitions": [],
+    "date_range": []
+  }}
+}}
 """ 
