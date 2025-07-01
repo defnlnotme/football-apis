@@ -181,10 +181,42 @@ The possible data types and their meanings are:
 - odds: Extract all available betting odds for the team's matches. For each match, include the date, opponent, competition, and the odds for win/draw/loss (or other available markets). Group odds by bookmaker if possible.
 - outrights: Extract outright betting odds for the team (e.g., to win the league, to be relegated, etc.). For each market, include the market name, odds, bookmaker, and any relevant details.
 - odds-historical: Extract historical betting odds for the team's past matches. For each match, include the date, opponent, competition, and the odds at the time of the match for win/draw/loss (or other available markets). Group odds by bookmaker if possible.
+- team-overview: Extract ANY and ALL information you can find about the team from the page. This may include, but is not limited to: club name, full name, founding year, stadium name and capacity, president, coach, club colors, website, address, nickname, logo URL, trophies, honors, social media, sponsors, contact info, or any other relevant details. The schema should be flexible and include all fields you can extract, even if not listed here.
+- team-positions: Extract all information about player positions, roles, and tactical setups for the team. Include any details about formations, player roles, or position-specific stats.
+- team-contracts: Extract all available information about player contracts, agents, contract durations, clauses, and related details for the team.
+
+IMPORTANT: The JSON output can have ANY field the extraction agent deems important or related to the subject, not just the example fields. If values for any of the default/example fields cannot be found, they may be omitted from the output. Only include fields for which information is available in the HTML.
 
 For the provided HTML, extract the relevant information for the corresponding data type and organize it in a JSON object as shown below. Only include a section if the corresponding HTML content is provided.
 
 Return ONLY a valid JSON object as your output, with no extra text or explanation.
+
+Example output for team-overview:
+{{
+  "team": "ac-milan",
+  "team-overview": {{
+    "name": "AC Milan",
+    "full_name": "Associazione Calcio Milan",
+    "founded": "1899",
+    "stadium": "San Siro",
+    "stadium_capacity": "75,923",
+    "president": "Paolo Scaroni",
+    "coach": "Stefano Pioli",
+    "colors": ["red", "black"],
+    "website": "https://www.acmilan.com/",
+    "address": "Via Aldo Rossi 8, 20149 Milano, Italy",
+    "nickname": "Rossoneri",
+    "logo_url": "https://upload.wikimedia.org/wikipedia/en/0/0c/AC_Milan_logo.svg",
+    "trophies": ["Serie A", "Coppa Italia", "Champions League"],
+    "social_media": {{
+      "twitter": "https://twitter.com/acmilan",
+      "instagram": "https://instagram.com/acmilan"
+    }},
+    "sponsors": ["Emirates", "Puma"],
+    "contact_email": "info@acmilan.com"
+    // ... any other fields found ...
+  }}
+}}
 
 Example output for historical:
 {{

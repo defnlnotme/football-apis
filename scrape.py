@@ -2084,7 +2084,10 @@ def _handle_extract(args):
         handle_competition_teams(args, data_dir, filename)
     if "competition-stats" in extract_types:
         handle_competition_stats(args, data_dir, filename)
-    team_data_types = {"historical", "news", "appearances", "squad", "h2h", "h2h-vs", "team-stats", "stats", "odds-historical", "odds", "outrights", "odds-match"}
+    team_data_types = {
+        "historical", "news", "appearances", "squad", "h2h", "h2h-vs", "team-stats", "team-overview",
+        "team-positions", "team-contracts", "stats", "odds-historical", "odds", "outrights", "odds-match"
+    }
     requested_team_data = [t for t in extract_types if t in team_data_types]
     if requested_team_data:
         handle_team_data(args, data_dir, filename, requested_team_data, meta)
@@ -2254,6 +2257,38 @@ def handle_team_data(args, data_dir, filename, requested_team_data, meta):
                 html_extractor=args.html_extractor
             )
             html_by_type[item] = html
+        elif item == "team-overview":
+            year = args.year if args.year else current_year
+            html = extract_team_overview(
+                args.site,
+                args.team,
+                group=args.group or "",
+                year=year,
+                force_fetch=args.force_fetch,
+                args=args,
+                html_extractor=args.html_extractor
+            )
+            html_by_type["team-overview"] = html
+        elif item == "team-positions":
+            html = extract_team_positions(
+                args.site,
+                args.team,
+                group=args.group or "",
+                force_fetch=args.force_fetch,
+                args=args,
+                html_extractor=args.html_extractor
+            )
+            html_by_type["team-positions"] = html
+        elif item == "team-contracts":
+            html = extract_team_contracts(
+                args.site,
+                args.team,
+                group=args.group or "",
+                force_fetch=args.force_fetch,
+                args=args,
+                html_extractor=args.html_extractor
+            )
+            html_by_type["team-contracts"] = html
         elif item == "odds-historical":
             # odds-historical requires group, competition, year, and optionally page
             if not args.group or not args.competition or not args.year:
@@ -2656,6 +2691,69 @@ def handle_competition_fixtures_extraction(args, data_dir, filename):
         json.dump(result, f, ensure_ascii=False, indent=2)
     print(f"\033[92m✓ Saved extracted competition fixtures to {file_path}\033[0m")
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
+def extract_team_overview(site_name: str, team: str, group: str = "", year: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    pattern = paths.get("team-overview")
+    if not pattern:
+        raise ValueError(f"No team-overview pattern for site {site_name}")
+    sub_path = fill_url_pattern(pattern, args)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team, "team-overview", year=year, group=group)
+    if not force_fetch and is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', year '{year}', type 'team-overview'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached team-overview HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    return html_content
+
+def extract_team_positions(site_name: str, team: str, group: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    pattern = paths.get("team-positions")
+    if not pattern:
+        raise ValueError(f"No team-positions pattern for site {site_name}")
+    sub_path = fill_url_pattern(pattern, args)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team, "team-positions", group=group)
+    if not force_fetch and is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-positions'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached team-positions HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    return html_content
+
+def extract_team_contracts(site_name: str, team: str, group: str = "", force_fetch: bool = False, args=None, html_extractor: str = "playwright") -> str:
+    paths = SITE_URLS.get(site_name, {}).get("paths", {})
+    pattern = paths.get("team-contracts")
+    if not pattern:
+        raise ValueError(f"No team-contracts pattern for site {site_name}")
+    sub_path = fill_url_pattern(pattern, args)
+    url = urljoin(SITE_URLS[site_name]["url"], sub_path)
+    cache_path = get_team_html_cache_path(site_name, team, "team-contracts", group=group)
+    if not force_fetch and is_team_html_cache_valid(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        try:
+            validate_html_content(html_content, f"site '{site_name}', team '{team}', group '{group}', type 'team-contracts'")
+            return html_content
+        except ValueError:
+            logger.warning(f"Cached team-contracts HTML for {team} is invalid, refetching...")
+    html_content = extract_html_from_url(url, extractor=html_extractor)
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    return html_content
 
 def main():
     args = _parse_args()
